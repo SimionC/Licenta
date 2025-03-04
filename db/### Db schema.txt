@@ -1,0 +1,139 @@
+### Db schema 
+
+## Tables 
+Users
+UserTypes
+VisibilityType
+Courses
+Users-Courses (Enrollment Table)
+CourseWork (Assignments/Tasks)
+Notes
+Users-Notes (Shared Notes)
+Courses-Notes (Notes Associated with Courses)
+
+SubmittedWork
+Grades
+
+## Users
+- Id (Primary Key)
+- Email (Unique)
+- FirstName
+- LastName
+- PasswordHash
+- StudentId (Nullable, only for students)
+- UserTypeId (Foreign Key → UserTypes)
+- CreatedAt
+- UpdatedAt
+
+(helps track when records were created and last modified, like in this case to know if when an account was created, for a note to know it was updated, created, smtg like that - i think it's good ideea to put it, to help sort data, and see changes?)
+
+## UserTypes
+- Id (Primary Key)
+- Name (Student, Teacher, Admin)
+- Permissions (JSON field to store allowed actions for flexibility) 
+
+OR i can create a new tables named Permisions - that holds the id and name(of the actiobn that can be performed)  and RoledPermissions with id, RoleId - for the role that has the permision and PermissionId - the permission assigned to that specific role ( but sounds a little more complicated, it is an idea)
+
+how the JSON file could look like: (i guess this is how it's supposed to look like)
+{
+  "1": { 
+    "role": "Student", 
+    "permissions": {
+      "view_notes": true,
+      "edit_notes": true,
+      "create_courses": false,
+      "edit_courses": false,
+      "grade_students": false,
+      "manage_users": false
+    }
+  },
+  "2": { 
+    "role": "Teacher", 
+    "permissions": {
+      "view_notes": true,
+      "edit_notes": true,
+      "create_courses": true,
+      "edit_courses": true,
+      "grade_students": true,
+      "manage_users": false
+    }
+  },
+  "3": { 
+    "role": "Admin", 
+    "permissions": {
+      "view_notes": true,
+      "edit_notes": true,
+      "create_courses": true,
+      "edit_courses": true,
+      "grade_students": true,
+      "manage_users": true
+    }
+  }
+}
+
+## VisibilityType 
+- Id (Primary Key)
+- Name (Public, Hidden, Private)
+
+## Courses 
+- Id (Primary Key)
+- Title
+- Description
+- TeacherId (Foreign Key → Users)
+- CreatedAt
+- UpdatedAt
+
+## Users-Courses (Enrollment Table)
+- Id (Primary Key)
+- UserId (Foreign Key → Users)
+- CourseId (Foreign Key → Courses)
+- EnrolledAt
+
+## CourseWork (Assignments/Tasks)
+- Id (Primary Key)
+- CourseId (Foreign Key → Courses)
+- Title
+- Description
+- CreatedAt
+- DueDate
+- UpdatedAt
+
+## Notes
+- Id (Primary Key)
+- GUID (globally unique identifier) (for sharing)
+- Text
+- OwnerId (Foreign Key → Users)
+- VisibilityTypeId (Foreign Key → VisibilityType)
+- CreatedAt
+- UpdatedAt
+
+## Users-Notes (Shared Notes)
+- Id (Primary Key)
+- UserId (Foreign Key → Users)
+- NoteId (Foreign Key → Notes)
+- PermissionLevel (View/Edit)
+- SharedAt
+
+## Courses-Notes (Notes associated with courses(some ours ) ? or notes shared by the theacher that we cannot modify ?)
+- Id (Primary Key)
+- NoteId (Foreign Key → Notes)
+- CourseId (Foreign Key → Courses)
+
+## Grades
+- Id (Primary Key)
+- Title
+- Description
+- Grade (1-10)
+- CreatedAt
+
+## SubmittedWork
+- Id (Primary Key)
+- UserId (Foreign Key → Users)
+- NoteId (Foreign Key → Notes)
+- CourseWorkId (Foreign Key → CourseWork)
+- GradeId (Foreign Key → Grades)
+- SubmittedAt
+- ReviewedAt (Nullable)
+
+
+
