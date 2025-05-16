@@ -1,7 +1,9 @@
 using App.Server.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace App.Server.Controllers;
+
 
 [ApiController]
 [Route("[controller]")]
@@ -21,10 +23,13 @@ public class WeatherForecastController : ControllerBase
         _testService = testService;
     }
 
+    [Authorize]
     [HttpGet(Name = "GetWeatherForecast")]
     public IEnumerable<WeatherForecast> Get()
     {
         _testService.TestMethod();
+
+
 
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {
