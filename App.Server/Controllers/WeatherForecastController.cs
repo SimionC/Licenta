@@ -1,3 +1,4 @@
+using App.Server.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace App.Server.Controllers;
@@ -12,15 +13,19 @@ public class WeatherForecastController : ControllerBase
     };
 
     private readonly ILogger<WeatherForecastController> _logger;
+    private readonly TestService _testService; 
 
-    public WeatherForecastController(ILogger<WeatherForecastController> logger)
+    public WeatherForecastController(ILogger<WeatherForecastController> logger, TestService testService)
     {
         _logger = logger;
+        _testService = testService;
     }
 
     [HttpGet(Name = "GetWeatherForecast")]
     public IEnumerable<WeatherForecast> Get()
     {
+        _testService.TestMethod();
+
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {
             Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
