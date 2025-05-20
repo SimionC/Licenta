@@ -14,9 +14,10 @@ builder.Services.AddSwaggerGen();
 
 // Making TestService available for dependency injection 
 builder.Services.AddScoped<TestService>();
+builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddDbContext<AppDbContext>((config) => {
-    config.UseSqlite(builder.Configuration.GetConnectionString("SQLite"));
+    config.UseSqlite(builder.Configuration.GetConnectionString("SQLite"));     // !!!!!!! the entity framework was SQLite
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
