@@ -22,6 +22,17 @@ builder.Services.AddDbContext<AppDbContext>((config) => {
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie();
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins("https://localhost:59553") // match your Vite dev server
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // <- required for cookies
+    });
+});
+
 var app = builder.Build();
 
 app.UseDefaultFiles();
@@ -35,6 +46,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors();
 app.UseAuthorization();
 
 app.UseAuthentication();
