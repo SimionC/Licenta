@@ -27,7 +27,8 @@ public class AuthService
             Nume = registerModel.Nume,
             Prenume = registerModel.Prenume,
             StudentId = registerModel.StudentId,
-            Password = SHA256.HashData(Encoding.UTF8.GetBytes(registerModel.Password)).ToString()
+            Password = SHA256.HashData(Encoding.UTF8.GetBytes(registerModel.Password)).ToString(),
+            UserTypeId = registerModel.UserTypeId
         };
 
         _dbContext.Add(user);
