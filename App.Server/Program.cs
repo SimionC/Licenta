@@ -17,7 +17,7 @@ builder.Services.AddScoped<TestService>();
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddDbContext<AppDbContext>((config) => {
-    config.UseSqlite(builder.Configuration.GetConnectionString("SQLite"));     // !!!!!!! the entity framework was SQLite
+    config.UseSqlite(builder.Configuration.GetConnectionString("SQLite"));   
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -27,10 +27,21 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://localhost:59553") // match your Vite dev server
+        policy.WithOrigins("https://localhost:5173") // Vite default
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials(); // <- required for cookies
+    });
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", policy =>
+    {
+        policy.WithOrigins("https://localhost:59553") // your frontend URL
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -47,6 +58,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors("AllowFrontend");
 app.UseCors();
 app.UseAuthorization();
 

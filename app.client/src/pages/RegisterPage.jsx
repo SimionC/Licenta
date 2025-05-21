@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import "../App.css";
 
 const RegisterPage = () => {
     const [formData, setFormData] = useState({
@@ -7,7 +9,7 @@ const RegisterPage = () => {
         prenume: '',
         password: '',
         studentId: '',
-        userTypeId: 1, // example default value
+        userTypeId: 1,
     });
 
     const handleChange = (e) => {
@@ -18,16 +20,15 @@ const RegisterPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const res = await fetch('https://localhost:5001/Auth/Register', {
+            const res = await fetch('https://localhost:7166/Auth/Register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include', // Important for cookies
+                credentials: 'include',
                 body: JSON.stringify(formData),
             });
 
             if (res.ok) {
                 alert('Registration successful');
-                // Optional: navigate to login
             } else {
                 alert('Registration failed');
             }
@@ -38,19 +39,100 @@ const RegisterPage = () => {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <input name="email" placeholder="Email" onChange={handleChange} /><br />
-            <input name="nume" placeholder="First Name" onChange={handleChange} /><br />
-            <input name="prenume" placeholder="Last Name" onChange={handleChange} /><br />
-            <input name="password" placeholder="Password" type="password" onChange={handleChange} /><br />
-            <input name="studentId" placeholder="Student ID (optional)" onChange={handleChange} /><br />
-            <select name="userTypeId" onChange={handleChange}>
-                <option value="1">Student</option>
-                <option value="2">Admin</option>
-                {/* adapt based on real values */}
-            </select><br />
-            <button type="submit">Register</button>
-        </form>
+        <div className="container mt-5">
+            <div className="row justify-content-center">
+                <div className="col-md-6">
+                    <div className="card p-4 shadow">
+                        <h2 className="text-center mb-4">Register</h2>
+                        <form onSubmit={handleSubmit}>
+                            {/* Email Field */}
+                            <div className="mb-3">
+                                <label className="form-label">Email</label>
+                                <input
+                                    name="email"
+                                    type="email"
+                                    className="form-control"
+                                    placeholder="Enter your email"
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+
+                            {/* First Name */}
+                            <div className="mb-3">
+                                <label className="form-label">First Name</label>
+                                <input
+                                    name="nume"
+                                    className="form-control"
+                                    placeholder="Enter your first name"
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+
+                            {/* Last Name */}
+                            <div className="mb-3">
+                                <label className="form-label">Last Name</label>
+                                <input
+                                    name="prenume"
+                                    className="form-control"
+                                    placeholder="Enter your last name"
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+
+                            {/* Password */}
+                            <div className="mb-3">
+                                <label className="form-label">Password</label>
+                                <input
+                                    name="password"
+                                    type="password"
+                                    className="form-control"
+                                    placeholder="Enter your password"
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </div>
+
+                            {/* Optional Student ID */}
+                            <div className="mb-3">
+                                <label className="form-label">Student ID (optional)</label>
+                                <input
+                                    name="studentId"
+                                    className="form-control"
+                                    placeholder="123456"
+                                    onChange={handleChange}
+                                />
+                            </div>
+
+                            {/* User Type Dropdown */}
+                            <div className="mb-3">
+                                <label className="form-label">User Type</label>
+                                <select
+                                    name="userTypeId"
+                                    className="form-select"
+                                    onChange={handleChange}
+                                >
+                                    <option value="1">Student</option>
+                                    <option value="2">Teacher</option>
+                                </select>
+                            </div>
+
+                            {/* Submit Button */}
+                            <button type="submit" className="btn btn-green btn-success w-100">
+                                Register
+                            </button>
+                        </form>
+
+                        {/* Login Link */}
+                        <p className="text-center mt-3">
+                            Already have an account? <Link to="/login">Login here</Link>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 
