@@ -95,9 +95,9 @@ const RegisterPage = () => {
                                 />
                             </div>
 
-                            {/* Optional Student ID */}
+                            {/*Student ID */}
                             <div className="mb-3">
-                                <label className="form-label">Student ID (optional)</label>
+                                <label className="form-label">Student ID</label>
                                 <input
                                     name="studentId"
                                     className="form-control"

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using App.Server.Models;
 
 namespace App.Server.ORM;
 
