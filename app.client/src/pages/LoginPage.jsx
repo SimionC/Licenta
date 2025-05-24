@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "../App.css";
 
 const LoginPage = () => {
+    const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         email: '',
         password: '',
@@ -25,7 +28,8 @@ const LoginPage = () => {
             });
 
             if (res.ok) {
-                alert('Login successful');
+                //alert('Login successful');
+                navigate('/dashboard'); // ← redirect to dashboard
             } else {
                 alert('Login failed');
             }
