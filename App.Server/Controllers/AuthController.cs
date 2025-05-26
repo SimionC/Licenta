@@ -73,4 +73,24 @@ public class AuthController : ControllerBase
 
         return Ok();
     }
+
+    [HttpGet("me")]
+    public IActionResult Me()
+    {
+        if (!User.Identity.IsAuthenticated)
+            return Unauthorized();
+
+        var name = User.FindFirst("Name")?.Value;
+        var email = User.FindFirst("Email")?.Value;
+        var userTypeId = User.FindFirst("UserTypeId")?.Value;
+
+        return Ok(new
+        {
+            name,
+            email,
+            userType = userTypeId == "2" ? "teacher" : "student"
+        });
+    }
+
+
 }
