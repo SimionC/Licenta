@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace App.Server.Controllers;
 
 [ApiController]
-[Route("[controller]/[action]")]
+[Route("api/[controller]/[action]")]
 public class AuthController : ControllerBase
 {
     private AuthService _authService; 
@@ -74,7 +74,7 @@ public class AuthController : ControllerBase
         return Ok();
     }
 
-    [HttpGet("me")]
+    [HttpGet]
     public IActionResult Me()
     {
         if (!User.Identity.IsAuthenticated)

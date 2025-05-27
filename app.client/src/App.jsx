@@ -12,7 +12,7 @@ function App() {
     const [userType, setUserType] = useState("");
 
     useEffect(() => {
-        fetch("https://localhost:7166/Auth/Me", {credentials: "include" })
+        fetch("/api/Auth/Me", {credentials: "include" })
             .then((res) => {
                 if (!res.ok) throw new Error("Not logged in");
                 return res.json();

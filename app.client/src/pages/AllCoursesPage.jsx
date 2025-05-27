@@ -7,7 +7,7 @@ const AllCoursesPage = ({ userType }) => {
     const [description, setDescription] = useState('');
 
     useEffect(() => {
-        fetch("http://localhost:7166/Course/all")
+        fetch("/api/Course/all")
             .then(res => res.json())
             .then(data => setCourses(data));
     }, []);
@@ -21,7 +21,7 @@ const AllCoursesPage = ({ userType }) => {
             teacherEmail: "teacher@email.com", // replace with logged-in teacher email
         };
 
-        const res = await fetch("http://localhost:7166/Course/create", {
+        const res = await fetch("/api/Course/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(newCourse),
