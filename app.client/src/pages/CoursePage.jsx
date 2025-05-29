@@ -36,9 +36,11 @@ export default function CoursePage() {
             <h2 className="mb-4">📘 {course.title}</h2>
 
             {/* Assignment creation form */}
-            <CreateCourseWorkForm courseId={courseId} onCreated={(cw) =>
-                setCourseWorks(prev => [...prev, cw])
-            } />
+            {localStorage.getItem("userType") === "teacher" && (
+                <CreateCourseWorkForm courseId={courseId} onCreated={(cw) =>
+                    setCourseWorks(prev => [...prev, cw])
+                } />
+            )}
 
             {/* Assignment list */}
             <h4 className="mt-5">Assignments</h4>
