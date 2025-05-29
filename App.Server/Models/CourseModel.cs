@@ -2,7 +2,7 @@
 
 namespace App.Server.Models
 {
-    public class Course
+    public class CourseModel
     {
         [Key]
         public int Id { get; set; }
@@ -13,6 +13,8 @@ namespace App.Server.Models
         [Required]
         public string Description { get; set; } = "";
 
-        public string TeacherEmail { get; set; } = "";
+        //public string TeacherEmail { get; set; } = "";
+        
+        public string JoinPassword { get; set; } = "";
     }
 }

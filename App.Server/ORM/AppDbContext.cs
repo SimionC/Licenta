@@ -16,7 +16,7 @@ public partial class AppDbContext : DbContext
     {
     }
 
-    public virtual DbSet<Course> Courses { get; set; }
+    public virtual DbSet<CourseModel> Courses { get; set; }
 
     public virtual DbSet<CourseWork> CourseWorks { get; set; }
 

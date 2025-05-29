@@ -1,15 +1,18 @@
 ﻿import React, { useState, useEffect } from 'react';
-import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
+//import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
 
 const AllCoursesPage = ({ userType }) => {
     const [courses, setCourses] = useState([]);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [joinCode, setJoinCode] = useState("");
+    const [joinedCourse, setJoinedCourse] = useState(null);
 
     useEffect(() => {
         fetch("/api/Course/all")
             .then(res => res.json())
-            .then(data => setCourses(data));
+            .then(data => setCourses(data))
+            .catch(err => console.error("Failed to fetch courses", err));
     }, []);
 
     const handleCreateCourse = async (e) => {
@@ -36,6 +39,37 @@ const AllCoursesPage = ({ userType }) => {
             alert("Failed to create course");
         }
     };
+
+    const handleDeleteCourse = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this course?")) return;
+
+        const res = await fetch(`/api/Course/delete/${id}`, {
+            method: "DELETE",
+        });
+
+        if (res.ok) {
+            setCourses(courses.filter(c => c.id !== id));
+        } else {
+            alert("Failed to delete course.");
+        }
+    };
+
+    const handleJoinCourse = async () => {
+        const res = await fetch("/api/Course/join", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(joinCode),
+        });
+
+        if (res.ok) {
+            const course = await res.json();
+            setJoinedCourse(course);
+            alert(`Successfully joined: ${course.title}`);
+        } else {
+            alert("Invalid code. Please try again.");
+        }
+    };
+
 
     return (
         <div className="container mt-4">
@@ -73,12 +107,44 @@ const AllCoursesPage = ({ userType }) => {
 
             <ul className="list-group">
                 {courses.map(course => (
-                    <li key={course.id} className="list-group-item">
-                        <strong>{course.title}</strong><br />
-                        <small>{course.description}</small>
+                    <li key={course.id} className="list-group-item d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>{course.title}</strong><br />
+                            <small>{course.description}</small><br />
+                            {userType === 'teacher' && (
+                                <small className="text-muted">Password: <strong>{course.joinPassword}</strong></small>
+                            )}
+                        </div>
+                        {userType === 'teacher' && (
+                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteCourse(course.id)}>
+                                Delete
+                            </button>
+                        )}
                     </li>
                 ))}
             </ul>
+
+            {userType === 'student' && (
+                <div className="mt-5">
+                    <h4>Join a Course</h4>
+                    <input
+                        type="text"
+                        className="form-control mb-2"
+                        placeholder="Enter 4-digit password"
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value)}
+                    />
+                    <button className="btn btn-primary" onClick={handleJoinCourse}>
+                        Join
+                    </button>
+                    {joinedCourse && (
+                        <div className="alert alert-success mt-3">
+                            Joined course: <strong>{joinedCourse.title}</strong>
+                        </div>
+                    )}
+                </div>
+            )}
+
         </div>
     );
 };
