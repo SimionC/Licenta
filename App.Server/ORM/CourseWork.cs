@@ -13,5 +13,7 @@ public partial class CourseWork
 
     public string? Description { get; set; }
 
+    public DateTime? Deadline { get; set; }
+
     public virtual Course Course { get; set; } = null!;
 }

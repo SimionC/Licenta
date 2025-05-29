@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "../App.css";
 
@@ -38,6 +39,11 @@ const LoginPage = () => {
             alert('An error occurred');
         }
     };
+
+    axios.get("/api/Auth/Me", { withCredentials: true })
+        .then(res => {
+            localStorage.setItem("userEmail", res.data.email); // ✅ store email for later
+        });
 
     return (
         <div className="container mt-5">

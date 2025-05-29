@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import AllCoursesPage from './pages/AllCoursesPage';
+import CoursePage from './pages/CoursePage';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import axios from 'axios';
 
 
 function App() {
@@ -24,13 +26,14 @@ function App() {
             .catch(() => {
                 setUserType(""); // or redirect to login
             });
-          /*  .then(data => {
-                console.log("Me endpoint returned:", data);
-                setUserType(data.userType); // <- 'teacher' or 'student'
+        axios.get("/api/Auth/Me", { withCredentials: true })
+            .then(res => {
+                localStorage.setItem("userEmail", res.data.email); // ✅ this is key
+                localStorage.setItem("userType", res.data.userType); // (optional)
             })
-            .catch(err => {
-                console.error("Failed to fetch user info", err);
-            });*/
+            .catch(() => {
+                localStorage.removeItem("userEmail"); // clear on failure
+            });
     }, []);
 
 
@@ -41,6 +44,7 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/courses/all" element={<AllCoursesPage userType={userType} />} />
+            <Route path="/courses/:courseId" element={<CoursePage />} />
             {/* Add a home or default route later */}
         </Routes>
     );

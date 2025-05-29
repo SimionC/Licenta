@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 //import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
 
 const AllCoursesPage = ({ userType }) => {
@@ -132,7 +133,9 @@ const AllCoursesPage = ({ userType }) => {
                     {courses.map(course => (
                         <li key={course.id} className="list-group-item d-flex justify-content-between align-items-start">
                             <div>
-                                <strong>{course.title}</strong><br />
+                                <Link to={`/courses/${course.id}`} className="text-decoration-none">
+                                    <strong>{course.title}</strong>
+                                </Link><br />
                                 <small>{course.description}</small><br />
                                 <small className="text-muted">
                                     Password: <strong>{course.joinPassword}</strong>
@@ -172,7 +175,9 @@ const AllCoursesPage = ({ userType }) => {
                     <ul className="list-group mb-4">
                         {registeredCourses.map(course => (
                             <li key={course.id} className="list-group-item">
-                                <strong>{course.title}</strong><br />
+                                <Link to={`/courses/${course.id}`} className="text-decoration-none">
+                                    <strong>{course.title}</strong>
+                                </Link><br />
                                 <small>{course.description}</small>
                             </li>
                         ))}
@@ -182,7 +187,9 @@ const AllCoursesPage = ({ userType }) => {
                     <ul className="list-group">
                         {otherCourses.map(course => (
                             <li key={course.id} className="list-group-item">
-                                <strong>{course.title}</strong><br />
+                                <Link to={`/courses/${course.id}`} className="text-decoration-none">
+                                    <strong>{course.title}</strong>
+                                </Link><br />
                                 <small>{course.description}</small>
                             </li>
                         ))}

@@ -130,4 +130,47 @@ public class CourseController : ControllerBase
             others = otherCourses
         });
     }
+
+    [HttpGet("{id}")]
+    public IActionResult GetCourse(int id)
+    {
+        var course = _context.Courses.FirstOrDefault(c => c.Id == id);
+        if (course == null)
+            return NotFound();
+
+        return Ok(course);
+    }
+
+    [HttpPost("{courseId}/coursework")]
+    public IActionResult CreateCourseWork(int courseId, [FromBody] CourseWorkDTO dto)
+    {
+        var course = _context.Courses.FirstOrDefault(c => c.Id == courseId);
+        if (course == null)
+            return NotFound();
+
+        var courseWork = new CourseWork
+        {
+            Title = dto.Title,
+            Description = dto.Description,
+            Deadline = dto.Deadline,
+            CourseId = courseId
+        };
+
+        _context.CourseWorks.Add(courseWork);
+        _context.SaveChanges();
+
+        return Ok(courseWork);
+    }
+
+    [HttpGet("{courseId}/courseworks")]
+    public IActionResult GetCourseWorksForCourse(int courseId)
+    {
+        var courseWorks = _context.CourseWorks
+            .Where(cw => cw.CourseId == courseId)
+            .ToList();
+
+        return Ok(courseWorks);
+    }
+
+
 }
