@@ -17,6 +17,11 @@ public class CourseController : ControllerBase
     [HttpPost("create")]
     public IActionResult CreateCourse([FromBody] CourseModel course)
     {
+        //save the email of the teacher
+        var email = User.FindFirst("Email")?.Value;
+        if (email == null) return Unauthorized();
+        course.TeacherEmail = email;
+
         // generate unique 4-digit password
         var rand = new Random();
         string password;
@@ -34,6 +39,23 @@ public class CourseController : ControllerBase
     [HttpGet("all")]
     public IActionResult GetAllCourses()
     {
+        var email = User.FindFirst("Email")?.Value;
+        var userTypeId = User.FindFirst("UserTypeId")?.Value;
+
+        if (email == null || userTypeId == null)
+            return Unauthorized();
+
+        if (userTypeId == "2") // teacher
+        {
+            // Return only courses created by this teacher
+            var ownCourses = _context.Courses
+                .Where(c => c.TeacherEmail == email)
+                .ToList();
+
+            return Ok(ownCourses);
+        }
+
+        // For students or other roles, return all courses
         return Ok(_context.Courses.ToList());
     }
 
@@ -52,11 +74,60 @@ public class CourseController : ControllerBase
     [HttpPost("join")]
     public IActionResult JoinCourse([FromBody] string password)
     {
+        var email = User.FindFirst("Email")?.Value;
+        if (email == null) return Unauthorized();
+
+        var user = _context.Users.FirstOrDefault(u => u.Email == email);
+        if (user == null) return NotFound("User not found");
+
         var course = _context.Courses.FirstOrDefault(c => c.JoinPassword == password);
         if (course == null) return NotFound("Invalid password");
 
-        // optionally check if already joined, etc.
+        // Check if already registered
+        bool alreadyJoined = _context.UsersCourses.Any(uc =>
+            uc.UserId == user.Id && uc.CourseId == course.Id);
 
-        return Ok(course); // or just return course title/id
+        if (!alreadyJoined)
+        {
+            _context.UsersCourses.Add(new UsersCourse
+            {
+                UserId = user.Id,
+                CourseId = course.Id
+            });
+
+            _context.SaveChanges();
+        }
+
+        return Ok(course);
+    }
+
+
+    [HttpGet("student")]
+    public IActionResult GetStudentCourses()
+    {
+        var email = User.FindFirst("Email")?.Value;
+        if (email == null) return Unauthorized();
+
+        var user = _context.Users.FirstOrDefault(u => u.Email == email);
+        if (user == null) return NotFound("User not found");
+
+        var registeredIds = _context.UsersCourses
+            .Where(uc => uc.UserId == user.Id)
+            .Select(uc => uc.CourseId)
+            .ToList();
+
+        var registeredCourses = _context.Courses
+            .Where(c => registeredIds.Contains(c.Id))
+            .ToList();
+
+        var otherCourses = _context.Courses
+            .Where(c => !registeredIds.Contains(c.Id))
+            .ToList();
+
+        return Ok(new
+        {
+            registered = registeredCourses,
+            others = otherCourses
+        });
     }
 }

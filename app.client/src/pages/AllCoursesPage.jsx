@@ -7,12 +7,24 @@ const AllCoursesPage = ({ userType }) => {
     const [description, setDescription] = useState('');
     const [joinCode, setJoinCode] = useState("");
     const [joinedCourse, setJoinedCourse] = useState(null);
+    const [registeredCourses, setRegisteredCourses] = useState([]);
+    const [otherCourses, setOtherCourses] = useState([]);
 
     useEffect(() => {
         fetch("/api/Course/all")
             .then(res => res.json())
             .then(data => setCourses(data))
             .catch(err => console.error("Failed to fetch courses", err));
+
+        if (userType === 'student') {
+            fetch("/api/Course/student", { credentials: "include" })
+                .then(res => res.json())
+                .then(data => {
+                    setRegisteredCourses(data.registered);
+                    setOtherCourses(data.others);
+                });
+        }
+
     }, []);
 
     const handleCreateCourse = async (e) => {
@@ -65,11 +77,20 @@ const AllCoursesPage = ({ userType }) => {
             const course = await res.json();
             setJoinedCourse(course);
             alert(`Successfully joined: ${course.title}`);
+
+            // ⬇️ FETCH updated course lists
+            fetch("/api/Course/student", { credentials: "include" })
+                .then(res => res.json())
+                .then(data => {
+                    setRegisteredCourses(data.registered);
+                    setOtherCourses(data.others);
+                });
+
+            setJoinCode(""); // optional: clear input
         } else {
             alert("Invalid code. Please try again.");
         }
     };
-
 
     return (
         <div className="container mt-4">
@@ -105,28 +126,29 @@ const AllCoursesPage = ({ userType }) => {
                 <p className="text-muted">Only teachers can create courses.</p>
             )}
 
-            <ul className="list-group">
-                {courses.map(course => (
-                    <li key={course.id} className="list-group-item d-flex justify-content-between align-items-start">
-                        <div>
-                            <strong>{course.title}</strong><br />
-                            <small>{course.description}</small><br />
-                            {userType === 'teacher' && (
-                                <small className="text-muted">Password: <strong>{course.joinPassword}</strong></small>
-                            )}
-                        </div>
-                        {userType === 'teacher' && (
+            {/* ✅ Show full list only to teachers */}
+            {userType === 'teacher' && (
+                <ul className="list-group">
+                    {courses.map(course => (
+                        <li key={course.id} className="list-group-item d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{course.title}</strong><br />
+                                <small>{course.description}</small><br />
+                                <small className="text-muted">
+                                    Password: <strong>{course.joinPassword}</strong>
+                                </small>
+                            </div>
                             <button className="btn btn-sm btn-danger" onClick={() => handleDeleteCourse(course.id)}>
                                 Delete
                             </button>
-                        )}
-                    </li>
-                ))}
-            </ul>
+                        </li>
+                    ))}
+                </ul>
+            )}
 
             {userType === 'student' && (
-                <div className="mt-5">
-                    <h4>Join a Course</h4>
+                <>
+                    <h4 className="mt-5">Register to a Course</h4>
                     <input
                         type="text"
                         className="form-control mb-2"
@@ -137,16 +159,39 @@ const AllCoursesPage = ({ userType }) => {
                     <button className="btn btn-primary" onClick={handleJoinCourse}>
                         Join
                     </button>
+
                     {joinedCourse && (
                         <div className="alert alert-success mt-3">
                             Joined course: <strong>{joinedCourse.title}</strong>
                         </div>
                     )}
-                </div>
-            )}
 
+                    <hr />
+
+                    <h4 className="mt-4">Your Courses</h4>
+                    <ul className="list-group mb-4">
+                        {registeredCourses.map(course => (
+                            <li key={course.id} className="list-group-item">
+                                <strong>{course.title}</strong><br />
+                                <small>{course.description}</small>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <h4>Other Available Courses</h4>
+                    <ul className="list-group">
+                        {otherCourses.map(course => (
+                            <li key={course.id} className="list-group-item">
+                                <strong>{course.title}</strong><br />
+                                <small>{course.description}</small>
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
         </div>
     );
+
 };
 
 export default AllCoursesPage;

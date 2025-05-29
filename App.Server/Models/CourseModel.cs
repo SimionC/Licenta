@@ -13,7 +13,7 @@ namespace App.Server.Models
         [Required]
         public string Description { get; set; } = "";
 
-        //public string TeacherEmail { get; set; } = "";
+        public string TeacherEmail { get; set; } = "";
         
         public string JoinPassword { get; set; } = "";
     }
