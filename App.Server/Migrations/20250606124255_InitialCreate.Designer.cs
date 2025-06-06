@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace App.Server.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250606110029_AddNotesAndCollaborationTables")]
-    partial class AddNotesAndCollaborationTables
+    [Migration("20250606124255_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
