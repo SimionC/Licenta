@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using App.Server.Models;
 
 namespace App.Server.ORM;
 
@@ -15,160 +14,24 @@ public partial class AppDbContext : DbContext
         : base(options)
     {
     }
-    public DbSet<NoteModel> Notes { get; set; }
-    public DbSet<CollaborationModel> Collaborations { get; set; }
-    public DbSet<NotePermissionModel> NotePermissions { get; set; }
-    public DbSet<CollaborationMemberModel> CollaborationMembers { get; set; }
-
-    public virtual DbSet<CourseModel> Courses { get; set; }
-
-    public virtual DbSet<CourseWork> CourseWorks { get; set; }
-
-    public virtual DbSet<CoursesNote> CoursesNotes { get; set; }
-
-    public virtual DbSet<Grade> Grades { get; set; }
-
-    //public virtual DbSet<Note> Notes { get; set; }
-
-    public virtual DbSet<SubmittedWork> SubmittedWorks { get; set; }
-
-    public virtual DbSet<User> Users { get; set; }
-
-    public virtual DbSet<UserType> UserTypes { get; set; }
-
-    public virtual DbSet<UsersCourse> UsersCourses { get; set; }
-
-    public virtual DbSet<UsersNote> UsersNotes { get; set; }
-
-    public virtual DbSet<VisibilityType> VisibilityTypes { get; set; }
+    
+    public DbSet<Collaboration> Collaborations { get; set; } = null!;
+    public DbSet<CollaborationMember> CollaborationMembers { get; set; } = null!;
+    public DbSet<Course> Courses { get; set; } = null!;
+    public DbSet<CourseNote> CoursesNotes { get; set; } = null!;
+    public DbSet<CourseWork> CourseWork { get; set; } = null!;
+    public DbSet<Grade> Grades { get; set; } = null!;
+    public DbSet<Note> Notes { get; set; } = null!;
+    public DbSet<NotePermission> NotePermissions { get; set; } = null!;
+    public DbSet<SubmittedWork> SubmittedWork { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
+    public DbSet<UserCourse> UsersCourses { get; set; } = null!;
+    public DbSet<UserType> UserTypes { get; set; } = null!;
+    public DbSet<VisibilityType> VisibilityTypes { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        // One-to-many: Collaboration -> Notes
-        modelBuilder.Entity<CollaborationModel>()
-            .HasMany(c => c.Notes)
-            .WithOne(n => n.Collaboration)
-            .HasForeignKey(n => n.CollaborationId)
-            .OnDelete(DeleteBehavior.SetNull); // Or Cascade if you want notes deleted with collab
-
-        // One-to-many: Note -> NotePermission
-        modelBuilder.Entity<NoteModel>()
-            .HasMany(n => n.Permissions)
-            .WithOne(p => p.Note)
-            .HasForeignKey(p => p.NoteId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        // One-to-many: Collaboration -> CollaborationMember
-        modelBuilder.Entity<CollaborationModel>()
-            .HasMany(c => c.Members)
-            .WithOne(m => m.Collaboration)
-            .HasForeignKey(m => m.CollaborationId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        modelBuilder.Entity<CourseWork>(entity =>
-        {
-            entity.ToTable("CourseWork");
-
-            entity.HasOne(d => d.Course).WithMany(p => p.CourseWorks)
-                .HasForeignKey(d => d.CourseId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<CoursesNote>(entity =>
-        {
-            entity.ToTable("Courses_Notes");
-
-            entity.HasOne(d => d.Course).WithMany(p => p.CoursesNotes)
-                .HasForeignKey(d => d.CourseId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-
-            entity.HasOne(d => d.Note).WithMany(p => p.CoursesNotes)
-                .HasForeignKey(d => d.NoteId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<Grade>(entity =>
-        {
-            entity.Property(e => e.Grade1).HasColumnName("Grade");
-        });
-
-        modelBuilder.Entity<Note>(entity =>
-        {
-            entity.HasIndex(e => e.Guid, "IX_Notes_Guid").IsUnique();
-
-            entity.Property(e => e.CreationDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.ModifyDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Notes)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-
-            entity.HasOne(d => d.VisibilityType).WithMany(p => p.Notes)
-                .HasForeignKey(d => d.VisibilityTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<SubmittedWork>(entity =>
-        {
-            entity.ToTable("SubmittedWork");
-
-            entity.HasOne(d => d.Grade).WithMany(p => p.SubmittedWorks).HasForeignKey(d => d.GradeId);
-
-            entity.HasOne(d => d.Note).WithMany(p => p.SubmittedWorks)
-                .HasForeignKey(d => d.NoteId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.HasIndex(e => e.Email, "IX_Users_Email").IsUnique();
-
-            entity.HasIndex(e => e.StudentId, "IX_Users_StudentId").IsUnique();
-
-            entity.HasOne(d => d.UserType).WithMany(p => p.Users)
-                .HasForeignKey(d => d.UserTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<UserType>(entity =>
-        {
-            entity.HasIndex(e => e.Name, "IX_UserTypes_Name").IsUnique();
-        });
-
-        modelBuilder.Entity<UsersCourse>(entity =>
-        {
-            entity.ToTable("Users_Courses");
-
-            entity.HasOne(d => d.Course).WithMany(p => p.UsersCourses)
-                .HasForeignKey(d => d.CourseId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-
-            entity.HasOne(d => d.User).WithMany(p => p.UsersCourses)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<UsersNote>(entity =>
-        {
-            entity.ToTable("Users_Notes");
-
-            entity.HasOne(d => d.Note).WithMany(p => p.UsersNotes)
-                .HasForeignKey(d => d.NoteId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-
-            entity.HasOne(d => d.User).WithMany(p => p.UsersNotes)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull);
-        });
-
-        modelBuilder.Entity<VisibilityType>(entity =>
-        {
-            entity.ToTable("VisibilityType");
-
-            entity.HasIndex(e => e.Name, "IX_VisibilityType_Name").IsUnique();
-        });
 
         OnModelCreatingPartial(modelBuilder);
     }

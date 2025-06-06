@@ -1,5 +1,4 @@
-﻿using App.Server.Models;
-using App.Server.ORM;
+﻿using App.Server.ORM;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,21 +17,17 @@ namespace App.Server.Controllers
 
         // GET: api/Collaborations
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CollaborationModel>>> GetCollaborations()
+        public async Task<ActionResult<IEnumerable<Collaboration>>> GetCollaborations()
         {
             return await _context.Collaborations
-                .Include(c => c.Members)
-                .Include(c => c.Notes)
                 .ToListAsync();
         }
 
         // GET: api/Collaborations
         [HttpGet("{id}")]
-        public async Task<ActionResult<CollaborationModel>> GetCollaboration(int id)
+        public async Task<ActionResult<Collaboration>> GetCollaboration(int id)
         {
             var collab = await _context.Collaborations
-                .Include(c => c.Members)
-                .Include(c => c.Notes)
                 .FirstOrDefaultAsync(c => c.Id == id);
 
             if (collab == null)
@@ -43,7 +38,7 @@ namespace App.Server.Controllers
 
         // POST: api/Collaborations
         [HttpPost]
-        public async Task<ActionResult<CollaborationModel>> CreateCollaboration(CollaborationModel collaboration)
+        public async Task<ActionResult<Collaboration>> CreateCollaboration(Collaboration collaboration)
         {
             collaboration.CreatedAt = DateTime.UtcNow;
             _context.Collaborations.Add(collaboration);
@@ -54,7 +49,7 @@ namespace App.Server.Controllers
 
         // PUT: api/Collaborations
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCollaboration(int id, CollaborationModel collaboration)
+        public async Task<IActionResult> UpdateCollaboration(int id, Collaboration collaboration)
         {
             if (id != collaboration.Id)
                 return BadRequest();

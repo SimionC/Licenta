@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Server.ORM;
 
 public partial class User
 {
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    [Required]
     public string Email { get; set; } = null!;
 
     public string Nume { get; set; } = null!;
@@ -17,13 +22,12 @@ public partial class User
 
     public string? StudentId { get; set; }
 
+    [Required]
     public int UserTypeId { get; set; }
 
-    public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
 
-    public virtual UserType UserType { get; set; } = null!;
+    // Foreign Keys 
+    [ForeignKey("UserTypeId")]
+    public UserType UserType { get; set; } = null!;
 
-    public virtual ICollection<UsersCourse> UsersCourses { get; set; } = new List<UsersCourse>();
-
-    public virtual ICollection<UsersNote> UsersNotes { get; set; } = new List<UsersNote>();
 }

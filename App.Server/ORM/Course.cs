@@ -1,19 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace App.Server.ORM;
-
-public partial class Course
+namespace App.Server.ORM
 {
-    public int Id { get; set; }
+    public class Course
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
 
-    public string Title { get; set; } = null!;
+        [Required]
+        public string Title { get; set; } = string.Empty;
 
-    public string? Description { get; set; }
+        [Required]
+        public string Description { get; set; } = string.Empty;
 
-    public virtual ICollection<CourseWork> CourseWorks { get; set; } = new List<CourseWork>();
+        // Users foreign key 
+        public int TeacherId { get; set; }
+        
+        public string JoinPassword { get; set; } = string.Empty;
 
-    public virtual ICollection<CoursesNote> CoursesNotes { get; set; } = new List<CoursesNote>();
-
-    public virtual ICollection<UsersCourse> UsersCourses { get; set; } = new List<UsersCourse>();
+        // Foreign key
+        [ForeignKey("TeacherId")]
+        public virtual User Teacher { get; set; } = null!;
+    }
 }

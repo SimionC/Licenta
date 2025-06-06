@@ -15,12 +15,16 @@ public class CourseController : ControllerBase
 
     // Create new course
     [HttpPost("create")]
-    public IActionResult CreateCourse([FromBody] CourseModel course)
+    public IActionResult CreateCourse([FromBody] Course course)
     {
         //save the email of the teacher
         var email = User.FindFirst("Email")?.Value;
         if (email == null) return Unauthorized();
-        course.TeacherEmail = email;
+
+        var user = _context.Users.FirstOrDefault(u => u.Email == email);
+        if (user == null) return NotFound("User not found");
+        
+        course.TeacherId = user.Id;
 
         // generate unique 4-digit password
         var rand = new Random();
@@ -40,6 +44,7 @@ public class CourseController : ControllerBase
     public IActionResult GetAllCourses()
     {
         var email = User.FindFirst("Email")?.Value;
+        var userId = int.Parse(User.FindFirst("userId")?.Value);
         var userTypeId = User.FindFirst("UserTypeId")?.Value;
 
         if (email == null || userTypeId == null)
@@ -49,7 +54,7 @@ public class CourseController : ControllerBase
         {
             // Return only courses created by this teacher
             var ownCourses = _context.Courses
-                .Where(c => c.TeacherEmail == email)
+                .Where(c => c.TeacherId == userId)
                 .ToList();
 
             return Ok(ownCourses);
@@ -89,7 +94,7 @@ public class CourseController : ControllerBase
 
         if (!alreadyJoined)
         {
-            _context.UsersCourses.Add(new UsersCourse
+            _context.UsersCourses.Add(new UserCourse
             {
                 UserId = user.Id,
                 CourseId = course.Id
@@ -156,7 +161,7 @@ public class CourseController : ControllerBase
             CourseId = courseId
         };
 
-        _context.CourseWorks.Add(courseWork);
+        _context.CourseWork.Add(courseWork);
         _context.SaveChanges();
 
         return Ok(courseWork);
@@ -165,7 +170,7 @@ public class CourseController : ControllerBase
     [HttpGet("{courseId}/courseworks")]
     public IActionResult GetCourseWorksForCourse(int courseId)
     {
-        var courseWorks = _context.CourseWorks
+        var courseWorks = _context.CourseWork
             .Where(cw => cw.CourseId == courseId)
             .ToList();
 

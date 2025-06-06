@@ -1,5 +1,4 @@
-﻿using App.Server.Models;
-using App.Server.ORM;
+﻿using App.Server.ORM;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,7 +24,7 @@ namespace App.Server.Controllers
             return User.Claims.FirstOrDefault(c => c.Type == "UserId" || c.Type == "sub" || c.Type == "NameIdentifier")?.Value;
         }
 
-        private async Task<bool> UserCanReadNote(NoteModel note, string userId)
+        private async Task<bool> UserCanReadNote(NoteModel note, int userId)
         {
             if (note.OwnerId == userId) return true;
             if (note.IsPublic) return true;
@@ -44,12 +43,13 @@ namespace App.Server.Controllers
             return false;
         }
 
-        private async Task<bool> UserCanEditNote(NoteModel note, string userId)
+        private async Task<bool> UserCanEditNote(NoteModel note, int userId)
         {
             if (note.OwnerId == userId) return true;
 
             var permission = await _context.NotePermissions
                 .FirstOrDefaultAsync(p => p.NoteId == note.Id && p.UserId == userId);
+
             if (permission?.CanEdit == true) return true;
 
             if (note.CollaborationId.HasValue)
@@ -70,8 +70,8 @@ namespace App.Server.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetNotes([FromQuery] int? collaborationId)
         {
-            var userId = GetUserId();
-            IQueryable<NoteModel> notes = _context.Notes;
+            var userId = int.Parse(GetUserId());
+            IQueryable<Note> notes = _context.Notes;
 
             if (collaborationId.HasValue)
             {
@@ -79,7 +79,16 @@ namespace App.Server.Controllers
             }
 
             // Only return notes user can read
-            var notesList = await notes.ToListAsync();
+            var notesList = await notes.Select(n => new NoteModel
+            {
+                Id = n.Id,
+                Title = n.Guid,
+                Content = n.Text,
+                CreatedAt = n.CreationDate,
+                UpdatedAt = n.ModifyDate,
+                OwnerId = n.UserId,
+                CollaborationId = n.CollaborationId
+            }).ToListAsync();
             notesList = notesList.Where(note => UserCanReadNote(note, userId).Result).ToList();
 
             return notesList;
@@ -89,12 +98,23 @@ namespace App.Server.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<NoteModel>> GetNote(int id)
         {
-            var note = await _context.Notes.FindAsync(id);
+            var row = await _context.Notes.FindAsync(id);
 
-            if (note == null)
+            if (row == null)
                 return NotFound();
 
-            var userId = GetUserId();
+            var note = new NoteModel()
+            {
+                Id = row.Id,
+                Title = row.Guid,
+                Content = row.Text,
+                CreatedAt = row.CreationDate,
+                UpdatedAt = row.ModifyDate,
+                OwnerId = row.UserId,
+                CollaborationId = row.CollaborationId
+            };
+
+            var userId = int.Parse(GetUserId());
             if (!await UserCanReadNote(note, userId))
                 return Forbid();
 
@@ -106,8 +126,18 @@ namespace App.Server.Controllers
         public async Task<ActionResult<NoteModel>> CreateNote(NoteModel note)
         {
             note.CreatedAt = DateTime.UtcNow;
-            note.UpdatedAt = DateTime.UtcNow;
-            _context.Notes.Add(note);
+
+            var row = new Note()
+            {
+                Guid = new Guid().ToString(),
+                CreationDate = note.CreatedAt,
+                Text = note.Content ?? string.Empty,
+                UserId = note.OwnerId,
+                VisibilityTypeId = note.IsPublic ? 1 : 2, // Assuming 1 is public and 2 is private
+            };
+            
+            _context.Notes.Add(row);
+
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetNote), new { id = note.Id }, note);
@@ -115,28 +145,33 @@ namespace App.Server.Controllers
 
         // PUT: api/Notes/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateNote(int id, NoteModel note)
+        public async Task<IActionResult> UpdateNote(NoteModel note)
         {
-            if (id != note.Id)
-                return BadRequest();
+            var row = await _context.Notes.FindAsync(note.Id);
 
-            var existingNote = await _context.Notes.FindAsync(id);
-            if (existingNote == null)
-                return NotFound();
+            if (row == null)
+                return NotFound("Note not found");
 
-            var userId = GetUserId();
-            if (!await UserCanEditNote(existingNote, userId))
+            var userId = int.Parse(GetUserId());
+
+            var rowModel = new NoteModel
+            {
+                Id = row.Id,
+                Title = row.Guid,
+                Content = row.Text,
+                CreatedAt = row.CreationDate,
+                UpdatedAt = row.ModifyDate,
+                OwnerId = row.UserId,
+                CollaborationId = row.CollaborationId
+            };
+
+            if (!await UserCanEditNote(rowModel, userId))
                 return Forbid();
 
-            // Update fields
-            existingNote.Title = note.Title;
-            existingNote.Content = note.Content;
-            existingNote.UpdatedAt = DateTime.UtcNow;
-            existingNote.IsPublic = note.IsPublic;
-            existingNote.IsCode = note.IsCode;
-            existingNote.IsLatex = note.IsLatex;
-            existingNote.CollaborationId = note.CollaborationId;
-            // Add any other fields you need
+            row.ModifyDate = DateTime.UtcNow;
+            row.Text = note.Content ?? string.Empty;
+            row.Guid = note.Title; // Assuming title is used as a unique identifier
+            row.VisibilityTypeId = note.IsPublic ? 1 : 2; // Assuming 1 is public and 2 is private
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -150,8 +185,19 @@ namespace App.Server.Controllers
             if (note == null)
                 return NotFound();
 
-            var userId = GetUserId();
-            if (!await UserCanEditNote(note, userId))
+            var noteModel = new NoteModel
+            {
+                Id = note.Id,
+                Title = note.Guid,
+                Content = note.Text,
+                CreatedAt = note.CreationDate,
+                UpdatedAt = note.ModifyDate,
+                OwnerId = note.UserId,
+                CollaborationId = note.CollaborationId
+            };
+
+            var userId = int.Parse(GetUserId());
+            if (!await UserCanEditNote(noteModel, userId))
                 return Forbid();
 
             _context.Notes.Remove(note);
@@ -162,7 +208,7 @@ namespace App.Server.Controllers
 
         // POST: api/Notes/{noteId}/permissions
         [HttpPost("{noteId}/permissions")]
-        public async Task<IActionResult> AddOrUpdatePermission(int noteId, [FromBody] NotePermissionModel permission)
+        public async Task<IActionResult> AddOrUpdatePermission(int noteId, [FromBody] NotePermission permission)
         {
             var note = await _context.Notes.FindAsync(noteId);
             if (note == null)
@@ -189,7 +235,7 @@ namespace App.Server.Controllers
 
         // DELETE: api/Notes/{noteId}/permissions/{userId}
         [HttpDelete("{noteId}/permissions/{userId}")]
-        public async Task<IActionResult> RemovePermission(int noteId, string userId)
+        public async Task<IActionResult> RemovePermission(int noteId, int userId)
         {
             var permission = await _context.NotePermissions
                 .FirstOrDefaultAsync(p => p.NoteId == noteId && p.UserId == userId);
@@ -204,7 +250,7 @@ namespace App.Server.Controllers
 
         // GET: api/Notes/{noteId}/permissions
         [HttpGet("{noteId}/permissions")]
-        public async Task<ActionResult<IEnumerable<NotePermissionModel>>> GetPermissions(int noteId)
+        public async Task<ActionResult<IEnumerable<NotePermission>>> GetPermissions(int noteId)
         {
             var permissions = await _context.NotePermissions
                 .Where(p => p.NoteId == noteId)

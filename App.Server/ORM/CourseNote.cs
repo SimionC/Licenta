@@ -5,22 +5,22 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Server.ORM;
 
-public partial class CourseWork
+public partial class CourseNote
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
     [Required]
+    public int NoteId { get; set; }
+
+    [Required]
     public int CourseId { get; set; }
 
-    public string Title { get; set; } = null!;
+    // Foreign keys 
+    [ForeignKey("NoteId")]
+    public Note Note { get; set; } = null!;
 
-    public string? Description { get; set; }
-
-    public DateTime? Deadline { get; set; }
-
-    // Foreign keys
     [ForeignKey("CourseId")]
     public Course Course { get; set; } = null!;
 }
