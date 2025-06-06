@@ -15,6 +15,10 @@ public partial class AppDbContext : DbContext
         : base(options)
     {
     }
+    public DbSet<NoteModel> Notes { get; set; }
+    public DbSet<CollaborationModel> Collaborations { get; set; }
+    public DbSet<NotePermissionModel> NotePermissions { get; set; }
+    public DbSet<CollaborationMemberModel> CollaborationMembers { get; set; }
 
     public virtual DbSet<CourseModel> Courses { get; set; }
 
@@ -24,7 +28,7 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Grade> Grades { get; set; }
 
-    public virtual DbSet<Note> Notes { get; set; }
+    //public virtual DbSet<Note> Notes { get; set; }
 
     public virtual DbSet<SubmittedWork> SubmittedWorks { get; set; }
 
@@ -40,6 +44,29 @@ public partial class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        // One-to-many: Collaboration -> Notes
+        modelBuilder.Entity<CollaborationModel>()
+            .HasMany(c => c.Notes)
+            .WithOne(n => n.Collaboration)
+            .HasForeignKey(n => n.CollaborationId)
+            .OnDelete(DeleteBehavior.SetNull); // Or Cascade if you want notes deleted with collab
+
+        // One-to-many: Note -> NotePermission
+        modelBuilder.Entity<NoteModel>()
+            .HasMany(n => n.Permissions)
+            .WithOne(p => p.Note)
+            .HasForeignKey(p => p.NoteId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // One-to-many: Collaboration -> CollaborationMember
+        modelBuilder.Entity<CollaborationModel>()
+            .HasMany(c => c.Members)
+            .WithOne(m => m.Collaboration)
+            .HasForeignKey(m => m.CollaborationId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<CourseWork>(entity =>
         {
             entity.ToTable("CourseWork");
