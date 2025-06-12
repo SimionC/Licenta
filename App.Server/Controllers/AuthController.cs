@@ -61,7 +61,8 @@ public class AuthController : ControllerBase
             new Claim("LastName", result.Prenume),
             new Claim("Email", result.Email),
             new Claim("UserTypeId", result.UserTypeId.ToString()),
-            new Claim("StudentId", result.StudentId ?? string.Empty)
+            new Claim("StudentId", result.StudentId ?? string.Empty),
+            new Claim("userId", result.Id.ToString())
         };
 
         var claimsIdentity = new ClaimsIdentity(

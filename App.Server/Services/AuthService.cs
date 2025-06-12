@@ -49,6 +49,7 @@ public class AuthService
         if (passwordHash == user.Password)
             return new RegisterModel()
             {
+                Id = user.Id,
                 Email = user.Email,
                 Nume = user.Nume,
                 Prenume = user.Prenume, 

@@ -13,8 +13,11 @@ const AllCoursesPage = ({ userType }) => {
 
     useEffect(() => {
         fetch("/api/Course/all")
-            .then(res => res.json())
-            .then(data => setCourses(data))
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error("Failed to fetch courses");
+            })
+            .then(data => setCourses(Array.isArray(data) ? data : []))
             .catch(err => console.error("Failed to fetch courses", err));
 
         if (userType === 'student') {
@@ -32,9 +35,9 @@ const AllCoursesPage = ({ userType }) => {
         e.preventDefault();
 
         const newCourse = {
-            title,
-            description,
-            teacherEmail: "teacher@email.com", // replace with logged-in teacher email
+            Title: title,
+            Description: description
+            //teacherEmail: "teacher@email.com", // replace with logged-in teacher email
         };
 
         const res = await fetch("/api/Course/create", {

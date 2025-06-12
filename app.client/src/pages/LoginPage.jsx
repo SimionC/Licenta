@@ -29,8 +29,16 @@ const LoginPage = () => {
             });
 
             if (res.ok) {
-                //alert('Login successful');
-                navigate('/dashboard'); // ← redirect to dashboard
+                // After login, fetch user info
+                const meRes = await fetch('/api/Auth/Me', {
+                    credentials: 'include'
+                });
+                if (meRes.ok) {
+                    const me = await meRes.json();
+                    localStorage.setItem("userEmail", me.email);
+                    localStorage.setItem("userType", me.userType); // ✅ store userType
+                }
+                navigate('/dashboard');
             } else {
                 alert('Login failed');
             }
@@ -39,6 +47,7 @@ const LoginPage = () => {
             alert('An error occurred');
         }
     };
+
 
     axios.get("/api/Auth/Me", { withCredentials: true })
         .then(res => {

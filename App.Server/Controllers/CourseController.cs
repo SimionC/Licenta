@@ -15,24 +15,37 @@ public class CourseController : ControllerBase
 
     // Create new course
     [HttpPost("create")]
-    public IActionResult CreateCourse([FromBody] Course course)
+    public IActionResult CreateCourse([FromBody] CourseModel model)
     {
-        //save the email of the teacher
+        // Validate input (optional, but good practice)
+        if (string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.Description))
+            return BadRequest("Title and Description are required.");
+
+        // Save the email of the teacher (logged in user)
         var email = User.FindFirst("Email")?.Value;
         if (email == null) return Unauthorized();
 
         var user = _context.Users.FirstOrDefault(u => u.Email == email);
         if (user == null) return NotFound("User not found");
-        
-        course.TeacherId = user.Id;
 
-        // generate unique 4-digit password
+        // Generate unique 4-digit password
         var rand = new Random();
         string password;
         do
-        { password = rand.Next(1000, 10000).ToString(); }
+        {
+            password = rand.Next(10, 100).ToString();
+        }
         while (_context.Courses.Any(c => c.JoinPassword == password));
-        course.JoinPassword = password;
+
+        // Create the course entity
+        var course = new Course
+        {
+            Title = model.Title,
+            Description = model.Description,
+            TeacherId = user.Id,
+            JoinPassword = password
+            // You can set other fields here as needed
+        };
 
         _context.Courses.Add(course);
         _context.SaveChanges();
@@ -44,11 +57,13 @@ public class CourseController : ControllerBase
     public IActionResult GetAllCourses()
     {
         var email = User.FindFirst("Email")?.Value;
-        var userId = int.Parse(User.FindFirst("userId")?.Value);
+        var userIdStr = User.FindFirst("userId")?.Value;
         var userTypeId = User.FindFirst("UserTypeId")?.Value;
 
-        if (email == null || userTypeId == null)
+        if (email == null || userTypeId == null || userIdStr == null)
             return Unauthorized();
+
+        var userId = int.Parse(userIdStr);
 
         if (userTypeId == "2") // teacher
         {
