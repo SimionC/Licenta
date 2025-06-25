@@ -1,0 +1,81 @@
+﻿.courses-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.1s ease;
+    cursor: pointer;
+    min-height: 300px; /* 💡 Height boost */
+}
+
+    .courses-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+.courses-card-header {
+    background: #5DB996;
+    padding: 2.5rem; /* 💡 More spacing */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+    .courses-card-header img {
+        width: 48px;
+        height: 48px; /* 💡 Larger icon */
+    }
+
+.courses-card-body {
+    padding: 1.5rem; /* 💡 More inner spacing */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.courses-card-title {
+    font-weight: 700;
+    font-size: 1.2rem; /* 💡 Bigger title */
+    margin: 0;
+}
+
+.courses-card-teacher {
+    font-size: 1rem;
+    color: #444;
+    margin-bottom: 1.2rem;
+}
+
+.courses-card-btn {
+    background: #5DB996;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: .5rem;
+    font-size: .9rem;
+}
+
+    .courses-card-btn:hover {
+        background: #45a776;
+    }
+
+.courses-join-btn {
+    background-color: #5DB996;
+    color: white;
+    font-weight: 600;
+    border: none;
+    border-radius: 999px;
+    padding: 0.85rem 2rem; /* 💥 bigger padding */
+    font-size: 1.1rem; /* 💥 bigger text */
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    transition: background-color 0.2s ease;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* optional polish */
+}
+
+    .courses-join-btn:hover {
+        background-color: #118B50;
+    }

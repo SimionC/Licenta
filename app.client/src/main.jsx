@@ -7,7 +7,7 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>       //i aded this part
+    <React.StrictMode>    
         <BrowserRouter>
             <App />
         </BrowserRouter>

@@ -1,4 +1,10 @@
-﻿#root {
+﻿body {
+    margin: 0;
+    background-color: #FBF6E9;
+    font-family: 'Inter', sans-serif;
+}
+
+#root {
     max-width: 1280px;
     margin: 0 auto;
     padding: 2rem;
@@ -17,4 +23,116 @@ th, td {
 }
 .btn-green:hover {
     background-color: #0f7745;
+}
+
+/*DASHBOARD*/
+.dashboard-title {
+    font-size: 3.2rem; /* bigger font */
+    font-weight: 800; /* bolder */
+    color: #18230F;
+    margin: 0;
+    margin-bottom: 3rem;
+    padding-top: 0rem;
+    padding-left: 0.rem;
+}
+
+.dashboard-main {
+    display: flex;
+    gap: 3rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+}
+
+.dashboard-left {
+    flex: 1;
+    min-width: 700px;
+}
+
+.dashboard-right {
+    width: 500px;
+    min-width: 320px;
+    background-color: white;
+    border-radius: 1.2rem;
+    padding: 1.5rem;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.08);
+    max-height: 580px;
+    overflow-y: auto;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 2rem;
+}
+
+/*ALLCOPURSES PAGE*/
+
+.courses-page {
+    display: flex;
+}
+
+.courses-main {
+    margin-left: 300px;
+    padding: 2rem;
+}
+
+.courses-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.courses-join {
+    display: flex;
+    gap: .5rem;
+}
+
+.courses-join-input {
+    padding: .5rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.courses-join-btn {
+    background: #53C28B;
+    color: white;
+    border: none;
+    padding: .5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+    .courses-join-btn:hover {
+        background: #45a776;
+    }
+
+.courses-alert {
+    background: #e6f7ed;
+    border: 1px solid #53c28b;
+    padding: .75rem 1rem;
+    margin-bottom: 1.5rem;
+    border-radius: 6px;
+}
+
+.courses-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* ⬅ wider */
+    gap: 2rem;
+    max-width: 1400px; /* 💡 new max width */
+    margin: 0 auto; /* 💡 center horizontally */
+}
+
+.courses-content-wrapper {
+    max-width: 100%;
+    margin: 0 auto;
 }

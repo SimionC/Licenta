@@ -1,21 +1,35 @@
 .sidebar {
-    width: 250px;
+    width: 300px;
     height: 100vh;
-    background: #fff;
+    background: #ffffff;
     border-right: 1px solid #eee;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
     position: fixed;
     left: 0;
     top: 0;
-    padding: 1rem;
+    padding: 2rem 1.5rem;
+    font-size: 1.1rem; /* makes all sidebar text slightly larger */
 }
 
 .logo {
-    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 3rem;
+}
+
+.logo-circle {
+    background-color: #5DB996;
+    color: white;
     font-weight: bold;
-    margin-bottom: 2rem;
+    font-size: 1.3rem; /* was 1.1rem */
+    width: 40px; /* slightly larger */
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .menu {
@@ -25,46 +39,28 @@
 }
 
 .menu-item {
-    text-decoration: none;
-    color: #444;
-}
-
-    .menu-item.active {
-        font-weight: bold;
-        color: #118B50;
-    }
-
-.expandable > span {
-    cursor: pointer;
-}
-
-.submenu {
-    margin-left: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.profile {
-    border-top: 1px solid #eee;
-    padding-top: 1rem;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 1rem; /* more space between icon and text */
+    text-decoration: none;
+    color: #222;
+    padding: 0.9rem 1.2rem; /* more vertical & horizontal padding */
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+    font-size: 1.1rem; /* makes text in items bigger */
 }
 
-    .profile img {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+    .menu-item svg {
+        width: 22px;
+        height: 22px;
     }
 
-.info p {
-    margin: 0;
-    font-size: 0.9rem;
-}
+    .menu-item:hover {
+        background-color: #E3F0AF; /* Yellow hover */
+    }
 
-.info small {
-    color: gray;
-}
+    .menu-item.active {
+        background-color: #5DB996;
+        color: white;
+        font-weight: 600;
+    }

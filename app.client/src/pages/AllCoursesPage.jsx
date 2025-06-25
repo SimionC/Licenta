@@ -1,5 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import CoursesCourseCard from '../components/CoursesCourseCard';
+import Sidebar from '../components/Sidebar';
 //import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
 
 const AllCoursesPage = ({ userType }) => {
@@ -9,9 +11,69 @@ const AllCoursesPage = ({ userType }) => {
     const [joinCode, setJoinCode] = useState("");
     const [joinedCourse, setJoinedCourse] = useState(null);
     const [registeredCourses, setRegisteredCourses] = useState([]);
-    const [otherCourses, setOtherCourses] = useState([]);
+    // const [otherCourses, setOtherCourses] = useState([]);
+    const [showJoin, setShowJoin] = useState(false);
 
+   //TEST
     useEffect(() => {
+        if (userType === 'student') {
+            const mockCourses = [
+                {
+                    id: 1,
+                    title: "Finance",
+                    description: "Understand the core principles of corporate finance.",
+                    teacherName: "Dr. Sarah Johnson",
+                },
+                {
+                    id: 2,
+                    title: "Microeconomics",
+                    description: "Analyze individual markets and consumer behavior.",
+                    teacherName: "Prof. Michael Chen",
+                },
+                {
+                    id: 3,
+                    title: "Databases",
+                    description: "Learn SQL and relational database design.",
+                    teacherName: "Ms. Emily Rodriguez",
+                },
+                {
+                    id: 4,
+                    title: "React Fundamentals",
+                    description: "Build interactive UIs with modern JavaScript.",
+                    teacherName: "Mr. David Wilson",
+                },
+                {
+                    id: 5,
+                    title: "Finance",
+                    description: "Understand the core principles of corporate finance.",
+                    teacherName: "Dr. Sarah Johnson",
+                },
+                {
+                    id: 6,
+                    title: "Microeconomics",
+                    description: "Analyze individual markets and consumer behavior.",
+                    teacherName: "Prof. Michael Chen",
+                },
+                {
+                    id: 7,
+                    title: "Databases",
+                    description: "Learn SQL and relational database design.",
+                    teacherName: "Ms. Emily Rodriguez",
+                },
+                {
+                    id: 8,
+                    title: "React Fundamentals",
+                    description: "Build interactive UIs with modern JavaScript.",
+                    teacherName: "Mr. David Wilson",
+                }
+            ];
+
+            setRegisteredCourses(mockCourses);
+        }
+    }, [userType]);
+
+
+   /* useEffect(() => {
         fetch("/api/Course/all")
             .then(res => {
                 if (res.ok) return res.json();
@@ -25,11 +87,11 @@ const AllCoursesPage = ({ userType }) => {
                 .then(res => res.json())
                 .then(data => {
                     setRegisteredCourses(data.registered);
-                    setOtherCourses(data.others);
+                    //setOtherCourses(data.others);
                 });
         }
 
-    }, []);
+    }, []);*/
 
     const handleCreateCourse = async (e) => {
         e.preventDefault();
@@ -87,7 +149,7 @@ const AllCoursesPage = ({ userType }) => {
                 .then(res => res.json())
                 .then(data => {
                     setRegisteredCourses(data.registered);
-                    setOtherCourses(data.others);
+                    //setOtherCourses(data.others);
                 });
 
             setJoinCode(""); // optional: clear input
@@ -97,110 +159,113 @@ const AllCoursesPage = ({ userType }) => {
     };
 
     return (
-        <div className="container mt-4">
-            <h2>Courses</h2>
+        <div style={{ display: 'flex', backgroundColor: '#FBF6E9', minHeight: '100vh' }}>
+            <Sidebar />
+            <div style={{ flex: 1, padding: '3rem 4rem' }}>
+                <div className="dashboard-main">
+                    <div className="dashboard-left">
 
-            {/* ✅ Show this only if user is teacher */}
-            {userType === 'teacher' ? (
-                <form onSubmit={handleCreateCourse} className="mb-4">
-                    <div className="mb-3">
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Course Title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div className="mb-3">
-                        <textarea
-                            className="form-control"
-                            placeholder="Course Description"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <button type="submit" className="btn btn-success">
-                        Create Course
-                    </button>
-                </form>
-            ) : (
-                <p className="text-muted">Only teachers can create courses.</p>
-            )}
+                        {/* 🆕 WRAPPER that centers and limits width */}
+                        <div className="courses-content-wrapper">
 
-            {/* ✅ Show full list only to teachers */}
-            {userType === 'teacher' && (
-                <ul className="list-group">
-                    {courses.map(course => (
-                        <li key={course.id} className="list-group-item d-flex justify-content-between align-items-start">
-                            <div>
-                                <Link to={`/courses/${course.id}`} className="text-decoration-none">
-                                    <strong>{course.title}</strong>
-                                </Link><br />
-                                <small>{course.description}</small><br />
-                                <small className="text-muted">
-                                    Password: <strong>{course.joinPassword}</strong>
-                                </small>
+                            {/* Top title + button */}
+                            <div className="d-flex justify-content-between align-items-center mb-4">
+                                <h1 className="dashboard-title">Courses</h1>
+                                {userType === 'student' && (
+                                    <button
+                                        className="courses-join-btn"
+                                        onClick={() => setShowJoin(prev => !prev)}
+                                    >
+                                        <span className="me-2">+</span> Join Course
+                                    </button>
+                                )}
                             </div>
-                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteCourse(course.id)}>
-                                Delete
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
 
-            {userType === 'student' && (
-                <>
-                    <h4 className="mt-5">Register to a Course</h4>
-                    <input
-                        type="text"
-                        className="form-control mb-2"
-                        placeholder="Enter 4-digit password"
-                        value={joinCode}
-                        onChange={(e) => setJoinCode(e.target.value)}
-                    />
-                    <button className="btn btn-primary" onClick={handleJoinCourse}>
-                        Join
-                    </button>
+                            {/* Join input form */}
+                            {showJoin && (
+                                <div className="d-flex gap-2 mb-4">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Enter password"
+                                        value={joinCode}
+                                        onChange={(e) => setJoinCode(e.target.value)}
+                                        style={{ maxWidth: '200px' }}
+                                    />
+                                    <button className="btn btn-success" onClick={handleJoinCourse}>
+                                        Submit
+                                    </button>
+                                </div>
+                            )}
 
-                    {joinedCourse && (
-                        <div className="alert alert-success mt-3">
-                            Joined course: <strong>{joinedCourse.title}</strong>
+                            {/* Alert */}
+                            {joinedCourse && (
+                                <div className="alert alert-success mt-3">
+                                    Joined course: <strong>{joinedCourse.title}</strong>
+                                </div>
+                            )}
+
+                            {/* Student view */}
+                            {userType === 'student' && (
+                                <div className="courses-grid">
+                                    {registeredCourses.map(course => (
+                                        <CoursesCourseCard key={course.id} course={course} />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Teacher view */}
+                            {userType === 'teacher' && (
+                                <>
+                                    <form onSubmit={handleCreateCourse} className="mb-5">
+                                        <div className="mb-3">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Course Title"
+                                                value={title}
+                                                onChange={(e) => setTitle(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="mb-3">
+                                            <textarea
+                                                className="form-control"
+                                                placeholder="Course Description"
+                                                value={description}
+                                                onChange={(e) => setDescription(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                        <button type="submit" className="btn btn-success">
+                                            Create Course
+                                        </button>
+                                    </form>
+
+                                    <div className="courses-grid">
+                                        {courses.map(course => (
+                                            <div key={course.id}>
+                                                <CoursesCourseCard course={course} />
+                                                <button
+                                                    className="btn btn-danger btn-sm mt-2"
+                                                    onClick={() => handleDeleteCourse(course.id)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
-                    )}
-
-                    <hr />
-
-                    <h4 className="mt-4">Your Courses</h4>
-                    <ul className="list-group mb-4">
-                        {registeredCourses.map(course => (
-                            <li key={course.id} className="list-group-item">
-                                <Link to={`/courses/${course.id}`} className="text-decoration-none">
-                                    <strong>{course.title}</strong>
-                                </Link><br />
-                                <small>{course.description}</small>
-                            </li>
-                        ))}
-                    </ul>
-
-                    <h4>Other Available Courses</h4>
-                    <ul className="list-group">
-                        {otherCourses.map(course => (
-                            <li key={course.id} className="list-group-item">
-                                <Link to={`/courses/${course.id}`} className="text-decoration-none">
-                                    <strong>{course.title}</strong>
-                                </Link><br />
-                                <small>{course.description}</small>
-                            </li>
-                        ))}
-                    </ul>
-                </>
-            )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
+
+
+
 
 };
 

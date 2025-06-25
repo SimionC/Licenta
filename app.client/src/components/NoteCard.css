@@ -1,0 +1,30 @@
+.note-card {
+    background-color: #ffffff;
+    border: 2px solid #E3F0AF;
+    border-radius: 16px;
+    padding: 1rem;
+    width: 240px;
+    height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: transform 0.2s ease;
+}
+
+    .note-card:hover {
+        transform: translateY(-4px);
+    }
+
+.note-icon {
+    font-size: 1.8rem;
+}
+
+.note-title {
+    font-weight: 600;
+    font-size: 1rem;
+    text-align: center;
+    color: #18230F;
+}

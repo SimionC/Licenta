@@ -1,0 +1,88 @@
+.assignment-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .assignment-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+    }
+
+.assignments-box {
+    position: absolute;
+    top: 3rem;
+    right: 5rem;
+    width: 500px;
+    background-color: #fff;
+    border-radius: 1.2rem;
+    padding: 1.5rem;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.08);
+    max-height: 580px;
+    overflow-y: auto;
+}
+
+.assignments-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+}
+
+.assignment-panel {
+    width: 460px;
+    margin-left: 3rem;
+    background-color: #fff;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    height: fit-content;
+    align-self: flex-start;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.assignment-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.assignment-dot {
+    font-size: 0.9rem;
+    font-weight: bold;
+    padding: 0.2rem 0.5rem;
+    border-radius: 50%;
+    background-color: #f88;
+    color: white;
+}
+
+    .assignment-dot.red {
+        background-color: #ff4d4d;
+    }
+
+.assignment-course {
+    font-size: 0.9rem;
+    color: #118B50;
+    margin-top: 0.3rem;
+}
+
+.assignment-due {
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 12px;
+    display: inline-block;
+    font-weight: 500;
+}
+
+    .assignment-due.urgent {
+        background-color: #ffe5e5;
+        color: #cc0000;
+    }
+
+    .assignment-due.warning {
+        background-color: #fff9db;
+        color: #a87c00;
+    }
+
+    .assignment-due.ok {
+        background-color: #e0f8e0;
+        color: #117733;
+    }
