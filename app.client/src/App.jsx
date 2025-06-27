@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import AllCoursesPage from './pages/AllCoursesPage';
 import CoursePage from './pages/CoursePage';
+import NotesPage from './pages/NotesPage';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
 
@@ -45,6 +46,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/courses/all" element={<AllCoursesPage userType={userType} />} />
             <Route path="/courses/:courseId" element={<CoursePage />} />
+            <Route path="/notes" element={<NotesPage />} /> 
             {/* Add a home or default route later */}
         </Routes>
     );
