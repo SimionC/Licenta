@@ -1,13 +1,15 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import axios from 'axios';
+    // Import components
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import AllCoursesPage from './pages/AllCoursesPage';
 import CoursePage from './pages/CoursePage';
 import NotesPage from './pages/NotesPage';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import axios from 'axios';
+import NoteEditorPage from './pages/NoteEditorPage';
 
 
 function App() {
@@ -47,6 +49,8 @@ function App() {
             <Route path="/courses/all" element={<AllCoursesPage userType={userType} />} />
             <Route path="/courses/:courseId" element={<CoursePage />} />
             <Route path="/notes" element={<NotesPage />} /> 
+            <Route path="/notes/new" element={<NoteEditorPage />} />
+            <Route path="/notes/:noteGuid" element={<NoteEditorPage />} />
             {/* Add a home or default route later */}
         </Routes>
     );

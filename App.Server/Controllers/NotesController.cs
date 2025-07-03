@@ -1,261 +1,365 @@
-﻿using App.Server.ORM;
+﻿using App.Server.Models;
+using App.Server.ORM;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
-namespace App.Server.Controllers
+[ApiController]
+[Route("api/[controller]")]
+[Authorize] // Add this attribute to require authentication
+public class NotesController : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class NotesController : ControllerBase
+    private readonly AppDbContext _context;
+
+    public NotesController(AppDbContext context)
     {
-        private readonly AppDbContext _context;
+        _context = context;
+    }
 
-        public NotesController(AppDbContext context)
+    // Get all notes for the current user
+    [HttpGet("my-notes")]
+    public async Task<IActionResult> GetMyNotes()
+    {
+        try
         {
-            _context = context;
-        }
-
-        // ============================
-        // Helper methods for permissions
-        // ============================
-        private string GetUserId()
-        {
-            // Adjust this to your claim setup if needed
-            return User.Claims.FirstOrDefault(c => c.Type == "UserId" || c.Type == "sub" || c.Type == "NameIdentifier")?.Value;
-        }
-
-        private async Task<bool> UserCanReadNote(NoteModel note, int userId)
-        {
-            if (note.OwnerId == userId) return true;
-            if (note.IsPublic) return true;
-
-            var permission = await _context.NotePermissions
-                .FirstOrDefaultAsync(p => p.NoteId == note.Id && p.UserId == userId);
-            if (permission?.CanRead == true) return true;
-
-            if (note.CollaborationId.HasValue)
+            // Check if user is authenticated
+            if (!User.Identity.IsAuthenticated)
             {
-                var isCollabMember = await _context.CollaborationMembers
-                    .AnyAsync(m => m.CollaborationId == note.CollaborationId.Value && m.UserId == userId);
-                if (isCollabMember) return true;
+                return Unauthorized(new { error = "User not authenticated" });
             }
 
-            return false;
-        }
-
-        private async Task<bool> UserCanEditNote(NoteModel note, int userId)
-        {
-            if (note.OwnerId == userId) return true;
-
-            var permission = await _context.NotePermissions
-                .FirstOrDefaultAsync(p => p.NoteId == note.Id && p.UserId == userId);
-
-            if (permission?.CanEdit == true) return true;
-
-            if (note.CollaborationId.HasValue)
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("Email")?.Value;
+            if (string.IsNullOrEmpty(email))
             {
-                var member = await _context.CollaborationMembers
-                    .FirstOrDefaultAsync(m => m.CollaborationId == note.CollaborationId.Value && m.UserId == userId);
-                if (member != null && (member.Role == "owner" || member.Role == "editor")) return true;
+                return Unauthorized(new { error = "Email claim not found" });
             }
 
-            return false;
-        }
-
-        // ============================
-        // Endpoints
-        // ============================
-
-        // GET: api/Notes?collaborationId=2
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<NoteModel>>> GetNotes([FromQuery] int? collaborationId)
-        {
-            var userId = int.Parse(GetUserId());
-            IQueryable<Note> notes = _context.Notes;
-
-            if (collaborationId.HasValue)
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
             {
-                notes = notes.Where(n => n.CollaborationId == collaborationId.Value);
+                return NotFound(new { error = "User not found" });
             }
 
-            // Only return notes user can read
-            var notesList = await notes.Select(n => new NoteModel
-            {
-                Id = n.Id,
-                Title = n.Guid,
-                Content = n.Text,
-                CreatedAt = n.CreationDate,
-                UpdatedAt = n.ModifyDate,
-                OwnerId = n.UserId,
-                CollaborationId = n.CollaborationId
-            }).ToListAsync();
-            notesList = notesList.Where(note => UserCanReadNote(note, userId).Result).ToList();
+            // Get notes from database
+            var notes = await _context.Notes
+                .Where(n => n.UserId == user.Id)
+                .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
+                .Select(n => new
+                {
+                    id = n.Id,
+                    guid = n.Guid,
+                    title = !string.IsNullOrWhiteSpace(n.Title) ? n.Title : "Untitled Note",
+                    content = n.Text ?? "",
+                    createdAt = n.CreationDate,
+                    updatedAt = n.ModifyDate,
+                    isPublic = n.VisibilityTypeId == 2
+                })
+                .ToListAsync();
 
-            return notesList;
+            return Ok(notes);
         }
-
-        // GET: api/Notes/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<NoteModel>> GetNote(int id)
+        catch (Exception ex)
         {
-            var row = await _context.Notes.FindAsync(id);
+            Console.WriteLine($"Error getting notes: {ex}");
+            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
 
-            if (row == null)
-                return NotFound();
-
-            var note = new NoteModel()
+    // Create a new note
+    [HttpPost("create")]
+    public async Task<IActionResult> CreateNote([FromBody] NoteModel model)
+    {
+        try
+        {
+            if (!User.Identity.IsAuthenticated)
             {
-                Id = row.Id,
-                Title = row.Guid,
-                Content = row.Text,
-                CreatedAt = row.CreationDate,
-                UpdatedAt = row.ModifyDate,
-                OwnerId = row.UserId,
-                CollaborationId = row.CollaborationId
+                return Unauthorized(new { error = "User not authenticated" });
+            }
+
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("Email")?.Value;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { error = "Email claim not found" });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Generate unique GUID for the note
+            var noteGuid = Guid.NewGuid().ToString();
+
+            // Use the provided title, or extract from content as fallback
+            var title = !string.IsNullOrWhiteSpace(model.Title) ? model.Title : ExtractTitle(model.Content);
+
+            var note = new Note
+            {
+                Guid = noteGuid,
+                Title = title,
+                Text = model.Content ?? "# Welcome to your new note\n\nStart writing here...",
+                CreationDate = DateTime.UtcNow,
+                ModifyDate = DateTime.UtcNow,
+                UserId = user.Id,
+                VisibilityTypeId = model.IsPublic ? 2 : 1,
+                CollaborationId = model.CollaborationId
             };
 
-            var userId = int.Parse(GetUserId());
-            if (!await UserCanReadNote(note, userId))
-                return Forbid();
-
-            return note;
-        }
-
-        // POST: api/Notes
-        [HttpPost]
-        public async Task<ActionResult<NoteModel>> CreateNote(NoteModel note)
-        {
-            note.CreatedAt = DateTime.UtcNow;
-
-            var row = new Note()
-            {
-                Guid = new Guid().ToString(),
-                CreationDate = note.CreatedAt,
-                Text = note.Content ?? string.Empty,
-                UserId = note.OwnerId,
-                VisibilityTypeId = note.IsPublic ? 1 : 2, // Assuming 1 is public and 2 is private
-            };
-            
-            _context.Notes.Add(row);
-
+            _context.Notes.Add(note);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetNote), new { id = note.Id }, note);
-        }
-
-        // PUT: api/Notes/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateNote(NoteModel note)
-        {
-            var row = await _context.Notes.FindAsync(note.Id);
-
-            if (row == null)
-                return NotFound("Note not found");
-
-            var userId = int.Parse(GetUserId());
-
-            var rowModel = new NoteModel
+            return Ok(new
             {
-                Id = row.Id,
-                Title = row.Guid,
-                Content = row.Text,
-                CreatedAt = row.CreationDate,
-                UpdatedAt = row.ModifyDate,
-                OwnerId = row.UserId,
-                CollaborationId = row.CollaborationId
-            };
-
-            if (!await UserCanEditNote(rowModel, userId))
-                return Forbid();
-
-            row.ModifyDate = DateTime.UtcNow;
-            row.Text = note.Content ?? string.Empty;
-            row.Guid = note.Title; // Assuming title is used as a unique identifier
-            row.VisibilityTypeId = note.IsPublic ? 1 : 2; // Assuming 1 is public and 2 is private
-
-            await _context.SaveChangesAsync();
-            return NoContent();
+                id = note.Id,
+                guid = note.Guid,
+                title = note.Title,
+                content = note.Text,
+                createdAt = note.CreationDate,
+                updatedAt = note.ModifyDate,
+                isPublic = note.VisibilityTypeId == 2,
+                isOwner = true
+            });
         }
-
-        // DELETE: api/Notes/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteNote(int id)
+        catch (Exception ex)
         {
-            var note = await _context.Notes.FindAsync(id);
+            Console.WriteLine($"Error creating note: {ex}");
+            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
+
+    // Get a specific note by GUID
+    [HttpGet("{guid}")]
+    public async Task<IActionResult> GetNote(string guid)
+    {
+        try
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return Unauthorized(new { error = "User not authenticated" });
+            }
+
+            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Guid == guid);
             if (note == null)
-                return NotFound();
-
-            var noteModel = new NoteModel
             {
-                Id = note.Id,
-                Title = note.Guid,
-                Content = note.Text,
-                CreatedAt = note.CreationDate,
-                UpdatedAt = note.ModifyDate,
-                OwnerId = note.UserId,
-                CollaborationId = note.CollaborationId
-            };
+                return NotFound(new { error = "Note not found" });
+            }
 
-            var userId = int.Parse(GetUserId());
-            if (!await UserCanEditNote(noteModel, userId))
-                return Forbid();
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("Email")?.Value;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { error = "Email claim not found" });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Check access permissions
+            bool hasAccess = note.UserId == user.Id ||
+                            note.VisibilityTypeId == 2 ||
+                            (note.CollaborationId.HasValue &&
+                             await _context.CollaborationMembers.AnyAsync(cm =>
+                                cm.CollaborationId == note.CollaborationId && cm.UserId == user.Id));
+
+            if (!hasAccess)
+            {
+                return Forbid("Access denied");
+            }
+
+            var title = !string.IsNullOrWhiteSpace(note.Title) ? note.Title : ExtractTitle(note.Text);
+
+            return Ok(new
+            {
+                id = note.Id,
+                guid = note.Guid,
+                title = title,
+                content = note.Text,
+                createdAt = note.CreationDate,
+                updatedAt = note.ModifyDate,
+                isPublic = note.VisibilityTypeId == 2,
+                isOwner = note.UserId == user.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error getting note: {ex}");
+            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
+
+    // Update a note
+    [HttpPut("{guid}")]
+    public async Task<IActionResult> UpdateNote(string guid, [FromBody] NoteModel model)
+    {
+        try
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return Unauthorized(new { error = "User not authenticated" });
+            }
+
+            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Guid == guid);
+            if (note == null)
+            {
+                return NotFound(new { error = "Note not found" });
+            }
+
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("Email")?.Value;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { error = "Email claim not found" });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Check edit permissions
+            bool canEdit = note.UserId == user.Id ||
+                          (note.CollaborationId.HasValue &&
+                           await _context.CollaborationMembers.AnyAsync(cm =>
+                              cm.CollaborationId == note.CollaborationId && cm.UserId == user.Id));
+
+            if (!canEdit)
+            {
+                return Forbid("You don't have permission to edit this note");
+            }
+
+            // Update the note
+            if (!string.IsNullOrWhiteSpace(model.Title))
+            {
+                note.Title = model.Title;
+            }
+            else
+            {
+                note.Title = ExtractTitle(model.Content);
+            }
+
+            note.Text = model.Content ?? note.Text;
+            note.ModifyDate = DateTime.UtcNow;
+
+            if (model.IsPublic != (note.VisibilityTypeId == 2))
+            {
+                note.VisibilityTypeId = model.IsPublic ? 2 : 1;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                id = note.Id,
+                guid = note.Guid,
+                title = note.Title,
+                content = note.Text,
+                createdAt = note.CreationDate,
+                updatedAt = note.ModifyDate,
+                isPublic = note.VisibilityTypeId == 2,
+                isOwner = note.UserId == user.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating note: {ex}");
+            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
+
+    // Delete a note
+    [HttpDelete("{guid}")]
+    public async Task<IActionResult> DeleteNote(string guid)
+    {
+        try
+        {
+            if (!User.Identity.IsAuthenticated)
+            {
+                return Unauthorized(new { error = "User not authenticated" });
+            }
+
+            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Guid == guid);
+            if (note == null)
+            {
+                return NotFound(new { error = "Note not found" });
+            }
+
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("Email")?.Value;
+            if (string.IsNullOrEmpty(email))
+            {
+                return Unauthorized(new { error = "Email claim not found" });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (user == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            // Only owner can delete
+            if (note.UserId != user.Id)
+            {
+                return Forbid("Only the owner can delete this note");
+            }
 
             _context.Notes.Remove(note);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
-
-        // POST: api/Notes/{noteId}/permissions
-        [HttpPost("{noteId}/permissions")]
-        public async Task<IActionResult> AddOrUpdatePermission(int noteId, [FromBody] NotePermission permission)
+        catch (Exception ex)
         {
-            var note = await _context.Notes.FindAsync(noteId);
-            if (note == null)
-                return NotFound("Note not found.");
+            Console.WriteLine($"Error deleting note: {ex}");
+            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
 
-            // If permission exists, update; else add new
-            var existing = await _context.NotePermissions
-                .FirstOrDefaultAsync(p => p.NoteId == noteId && p.UserId == permission.UserId);
+    // Debug endpoint to check authentication
+    [HttpGet("debug-info")]
+    public IActionResult DebugInfo()
+    {
+        try
+        {
+            var email = User.FindFirst(ClaimTypes.Email)?.Value ?? User.FindFirst("Email")?.Value;
 
-            if (existing != null)
+            return Ok(new
             {
-                existing.CanEdit = permission.CanEdit;
-                existing.CanRead = permission.CanRead;
-            }
-            else
-            {
-                permission.NoteId = noteId;
-                _context.NotePermissions.Add(permission);
-            }
-
-            await _context.SaveChangesAsync();
-            return Ok();
+                email = email,
+                isAuthenticated = User.Identity.IsAuthenticated,
+                claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList(),
+                authType = User.Identity.AuthenticationType,
+                name = User.Identity.Name
+            });
         }
-
-        // DELETE: api/Notes/{noteId}/permissions/{userId}
-        [HttpDelete("{noteId}/permissions/{userId}")]
-        public async Task<IActionResult> RemovePermission(int noteId, int userId)
+        catch (Exception ex)
         {
-            var permission = await _context.NotePermissions
-                .FirstOrDefaultAsync(p => p.NoteId == noteId && p.UserId == userId);
-
-            if (permission == null)
-                return NotFound();
-
-            _context.NotePermissions.Remove(permission);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
         }
+    }
 
-        // GET: api/Notes/{noteId}/permissions
-        [HttpGet("{noteId}/permissions")]
-        public async Task<ActionResult<IEnumerable<NotePermission>>> GetPermissions(int noteId)
+    // Helper method to extract title from markdown content
+    private string ExtractTitle(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return "Untitled Note";
+
+        var lines = content.Split('\n');
+        var firstLine = lines.FirstOrDefault()?.Trim();
+
+        if (firstLine?.StartsWith("# ") == true)
         {
-            var permissions = await _context.NotePermissions
-                .Where(p => p.NoteId == noteId)
-                .ToListAsync();
-            return permissions;
+            return firstLine.Substring(2).Trim();
         }
+
+        // If no markdown title, use first non-empty line up to 50 chars
+        var firstNonEmptyLine = lines.FirstOrDefault(l => !string.IsNullOrWhiteSpace(l))?.Trim();
+        if (firstNonEmptyLine != null)
+        {
+            return firstNonEmptyLine.Length > 50 ? firstNonEmptyLine.Substring(0, 50) + "..." : firstNonEmptyLine;
+        }
+
+        return "Untitled Note";
     }
 }

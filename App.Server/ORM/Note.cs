@@ -11,6 +11,9 @@ public partial class Note
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
+    [Required]
+    public string Title { get; set; }
+
     // For sharable links
     public string Guid { get; set; } = null!;
 
