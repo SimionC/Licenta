@@ -1,0 +1,77 @@
+/* src/components/ResourceCard.css */
+
+.resource-card {
+    background-color: white;
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    gap: 20px;
+    padding: 20px;
+    margin: 10px;
+    width: calc(50% - 20px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: box-shadow 0.3s ease;
+    width: 675px;
+}
+
+    .resource-card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+
+.resource-left {
+    display: flex;
+    align-items: center;
+}
+
+.resource-icon {
+    background-color: #eafaf3;
+    padding: 10px;
+    border-radius: 12px;
+    margin-right: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.resource-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.resource-title {
+    margin: 0;
+    padding-top: 18px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.resource-meta {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-top: 4px;
+}
+
+.resource-download-btn {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 500;
+    color: #111827;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+    .resource-download-btn:hover {
+        background-color: #f9fafb;
+    }
+
+.resource-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+}

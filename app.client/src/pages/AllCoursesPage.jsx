@@ -8,90 +8,112 @@ const AllCoursesPage = ({ userType }) => {
     const [courses, setCourses] = useState([]);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const [joinCode, setJoinCode] = useState("");
     const [joinedCourse, setJoinedCourse] = useState(null);
     const [registeredCourses, setRegisteredCourses] = useState([]);
     // const [otherCourses, setOtherCourses] = useState([]);
     const [showJoin, setShowJoin] = useState(false);
+  
+
 
    //TEST
+    //useEffect(() => {
+    //    if (userType === 'student') {
+    //        const mockCourses = [
+    //            {
+    //                id: 1,
+    //                title: "Finance",
+    //                description: "Understand the core principles of corporate finance.",
+    //                teacherName: "Dr. Sarah Johnson",
+    //            },
+    //            {
+    //                id: 2,
+    //                title: "Microeconomics",
+    //                description: "Analyze individual markets and consumer behavior.",
+    //                teacherName: "Prof. Michael Chen",
+    //            },
+    //            {
+    //                id: 3,
+    //                title: "Databases",
+    //                description: "Learn SQL and relational database design.",
+    //                teacherName: "Ms. Emily Rodriguez",
+    //            },
+    //            {
+    //                id: 4,
+    //                title: "React Fundamentals",
+    //                description: "Build interactive UIs with modern JavaScript.",
+    //                teacherName: "Mr. David Wilson",
+    //            },
+    //            {
+    //                id: 5,
+    //                title: "Finance",
+    //                description: "Understand the core principles of corporate finance.",
+    //                teacherName: "Dr. Sarah Johnson",
+    //            },
+    //            {
+    //                id: 6,
+    //                title: "Microeconomics",
+    //                description: "Analyze individual markets and consumer behavior.",
+    //                teacherName: "Prof. Michael Chen",
+    //            },
+    //            {
+    //                id: 7,
+    //                title: "Databases",
+    //                description: "Learn SQL and relational database design.",
+    //                teacherName: "Ms. Emily Rodriguez",
+    //            },
+    //            {
+    //                id: 8,
+    //                title: "React Fundamentals",
+    //                description: "Build interactive UIs with modern JavaScript.",
+    //                teacherName: "Mr. David Wilson",
+    //            }
+    //        ];
+
+    //        setRegisteredCourses(mockCourses);
+    //    }
+    //}, [userType]);
+
+
+    //useEffect(() => {
+    //    fetch("/api/Course/all")
+    //        .then(res => {
+    //            if (res.ok) return res.json();
+    //            throw new Error("Failed to fetch courses");
+    //        })
+    //        .then(data => setCourses(Array.isArray(data) ? data : []))
+    //        .catch(err => console.error("Failed to fetch courses", err));
+
+    //    if (userType === 'student') {
+    //        fetch("/api/Course/student", { credentials: "include" })
+    //            .then(res => res.json())
+    //            .then(data => {
+    //                setRegisteredCourses(data.registered);
+    //                //setOtherCourses(data.others);
+    //            });
+    //    }
+
+    //}, []);
+
     useEffect(() => {
         if (userType === 'student') {
-            const mockCourses = [
-                {
-                    id: 1,
-                    title: "Finance",
-                    description: "Understand the core principles of corporate finance.",
-                    teacherName: "Dr. Sarah Johnson",
-                },
-                {
-                    id: 2,
-                    title: "Microeconomics",
-                    description: "Analyze individual markets and consumer behavior.",
-                    teacherName: "Prof. Michael Chen",
-                },
-                {
-                    id: 3,
-                    title: "Databases",
-                    description: "Learn SQL and relational database design.",
-                    teacherName: "Ms. Emily Rodriguez",
-                },
-                {
-                    id: 4,
-                    title: "React Fundamentals",
-                    description: "Build interactive UIs with modern JavaScript.",
-                    teacherName: "Mr. David Wilson",
-                },
-                {
-                    id: 5,
-                    title: "Finance",
-                    description: "Understand the core principles of corporate finance.",
-                    teacherName: "Dr. Sarah Johnson",
-                },
-                {
-                    id: 6,
-                    title: "Microeconomics",
-                    description: "Analyze individual markets and consumer behavior.",
-                    teacherName: "Prof. Michael Chen",
-                },
-                {
-                    id: 7,
-                    title: "Databases",
-                    description: "Learn SQL and relational database design.",
-                    teacherName: "Ms. Emily Rodriguez",
-                },
-                {
-                    id: 8,
-                    title: "React Fundamentals",
-                    description: "Build interactive UIs with modern JavaScript.",
-                    teacherName: "Mr. David Wilson",
-                }
-            ];
-
-            setRegisteredCourses(mockCourses);
-        }
-    }, [userType]);
-
-
-   /* useEffect(() => {
-        fetch("/api/Course/all")
-            .then(res => {
-                if (res.ok) return res.json();
-                throw new Error("Failed to fetch courses");
-            })
-            .then(data => setCourses(Array.isArray(data) ? data : []))
-            .catch(err => console.error("Failed to fetch courses", err));
-
-        if (userType === 'student') {
+            // only fetch the student's registered courses
             fetch("/api/Course/student", { credentials: "include" })
                 .then(res => res.json())
-                .then(data => {
-                    setRegisteredCourses(data.registered);
-                    //setOtherCourses(data.others);
-                });
+                .then(data => setRegisteredCourses(data.registered))
+                .catch(err => console.error(err));
+        } else if (userType === 'teacher') {
+            // fetch only the courses this teacher created
+            fetch("/api/Course/teacher", { credentials: "include" })
+                .then(res => {
+                    if (res.ok) return res.json();
+                    throw new Error("Failed to fetch teacher's courses");
+                })
+                .then(data => setCourses(Array.isArray(data) ? data : []))
+                .catch(err => console.error(err));
         }
-
-    }, []);*/
+    }, [userType]);
 
     const handleCreateCourse = async (e) => {
         e.preventDefault();
@@ -171,12 +193,22 @@ const AllCoursesPage = ({ userType }) => {
                             {/* Top title + button */}
                             <div className="d-flex justify-content-between align-items-center mb-4">
                                 <h1 className="dashboard-title">Courses</h1>
+
                                 {userType === 'student' && (
                                     <button
                                         className="courses-join-btn"
                                         onClick={() => setShowJoin(prev => !prev)}
                                     >
                                         <span className="me-2">+</span> Join Course
+                                    </button>
+                                )}
+
+                                {userType === 'teacher' && (
+                                    <button
+                                        className="courses-join-btn"
+                                        onClick={() => setShowCreateModal(true)}
+                                    >
+                                        <span className="me-2">+</span> Create Course
                                     </button>
                                 )}
                             </div>
@@ -214,53 +246,66 @@ const AllCoursesPage = ({ userType }) => {
                                 </div>
                             )}
 
-                            {/* Teacher view */}
-                            {userType === 'teacher' && (
-                                <>
-                                    <form onSubmit={handleCreateCourse} className="mb-5">
-                                        <div className="mb-3">
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Course Title"
-                                                value={title}
-                                                onChange={(e) => setTitle(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="mb-3">
-                                            <textarea
-                                                className="form-control"
-                                                placeholder="Course Description"
-                                                value={description}
-                                                onChange={(e) => setDescription(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                        <button type="submit" className="btn btn-success">
-                                            Create Course
+                            {/*course list*/}
+                            <div className="courses-grid">
+                                {courses.map(course => (
+                                    <div key={course.id}>
+                                        <CoursesCourseCard course={course} />
+                                        <button
+                                            className="btn btn-danger btn-sm mt-2"
+                                            onClick={() => handleDeleteCourse(course.id)}
+                                        >
+                                            Delete
                                         </button>
-                                    </form>
-
-                                    <div className="courses-grid">
-                                        {courses.map(course => (
-                                            <div key={course.id}>
-                                                <CoursesCourseCard course={course} />
-                                                <button
-                                                    className="btn btn-danger btn-sm mt-2"
-                                                    onClick={() => handleDeleteCourse(course.id)}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        ))}
                                     </div>
-                                </>
-                            )}
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+
+            {/* to create a new course*/}
+            {showCreateModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <h3 className="mb-3">Create New Course</h3>
+                        <form onSubmit={handleCreateCourse}>
+                            <div className="mb-3">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Course Title"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="mb-3">
+                                <textarea
+                                    className="form-control"
+                                    placeholder="Course Description"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    required
+                                />
+                            </div>
+                            <div className="d-flex justify-content-between">
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowCreateModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-success">Create</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 

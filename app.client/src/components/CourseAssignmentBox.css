@@ -1,0 +1,58 @@
+.course-assignment-box {
+    background: #fff;
+    border: 1px solid #e9f4e5;
+    border-radius: 12px;
+    padding: 20px;
+    gap: 40px;
+    margin: 1rem auto;
+    max-width: 1400px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    width: 675px;
+    
+}
+
+.cab-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.cab-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #18230f;
+    margin: 0;
+}
+
+.cab-status--pending {
+    background: #fff9db;
+    color: #a87c00;
+}
+
+.cab-status--completed {
+    background: #e0f8e0;
+    color: #117733;
+}
+
+.cab-desc {
+    color: #4b5563;
+    margin-bottom: 0.75rem;
+}
+
+.cab-meta {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+.cab-meta-item {
+    display: flex;
+    align-items: center;
+}
+
+.cab-meta-icon {
+    margin-right: 0.4rem;
+    color: #118b50;
+}

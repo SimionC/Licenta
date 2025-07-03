@@ -16,41 +16,47 @@ const mockNotes = [
 ];
 
 const NotesPage = () => {
+
+
+
     return (
         <div className="notes-page">
             <Sidebar />
             <div className="notes-main">
                 <div className="dashboard-main">
                     <div className="dashboard-left">
-                        <div className="d-flex justify-content-between align-items-center mb-4">
-                            <h1 className="dashboard-title">Notes</h1>
-                            <button className="notes-btn">+ Create Folder</button>
-                        </div>
+                        <div className="courses-content-wrapper">
+                            <div className="d-flex justify-content-between align-items-center mb-4">
+                                <h1 className="dashboard-title">Notes</h1>
+                                <button className="notes-btn">+ Create Folder</button>
+                            </div>
 
-                        <div className="notes-folders">
-                            {mockFolders.map(name => (
-                                <FolderCard key={name} name={name} />
-                            ))}
-                        </div>
+                            <div className="notes-folders">
+                                {mockFolders.map(name => (
+                                    <FolderCard key={name} name={name} />
+                                ))}
+                            </div>
 
-                        <div className="notes-actions">
-                            <button className="notes-btn">+ Create Note</button>
-                            <button className="notes-btn">
-                                <Users size={16} style={{ marginRight: '6px' }} />
-                                Create Collaboration
-                            </button>
-                        </div>
+                            <div className="notes-actions">
+                                <button className="notes-btn">+ Create Note</button>
+                                <button className="notes-btn">
+                                    <Users size={16} style={{ marginRight: '6px' }} />
+                                    Create Collaboration
+                                </button>
+                            </div>
 
-                        <div className="notes-grid">
-                            {mockNotes.map(note => (
-                                <NotesNoteCard key={note.id} note={note} />
-                            ))}
+                            <div className="notes-grid">
+                                {mockNotes.map(note => (
+                                    <NotesNoteCard key={note.id} note={note} />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     );
+
 
 };
 

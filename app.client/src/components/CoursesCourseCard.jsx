@@ -1,8 +1,12 @@
 ﻿import React from 'react';
 import './CoursesCourseCard.css';
 import { BookOpen, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const CoursesCourseCard = ({ course }) => {
+
+    const navigate = useNavigate();
+
     return (
         <div className="courses-card">
             <div className="courses-card-header">
@@ -11,7 +15,8 @@ const CoursesCourseCard = ({ course }) => {
             <div className="courses-card-body">
                 <h5 className="courses-card-title">{course.title}</h5>
                 <p className="courses-card-teacher">{course.teacherName}</p>
-                <button className="courses-card-btn">
+                <button className="courses-card-btn"
+                    onClick={() => navigate(`/courses/${course.id}`)}>
                     <Eye size={16} style={{ marginRight: '6px' }} />
                     View Course
                 </button>
