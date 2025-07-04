@@ -38,6 +38,27 @@ const NoteEditorPage = () => {
         }
     }, [noteGuid, navigate]);
 
+    useEffect(() => {
+        // Check if user is authenticated
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(res => {
+                if (!res.ok) {
+                    console.log('User not authenticated, redirecting to login');
+                    // Redirect to login or show login form
+                    navigate('/login');
+                    return;
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log('Current user:', data);
+            })
+            .catch(err => {
+                console.error('Auth check failed:', err);
+                navigate('/login');
+            });
+    }, []);
+
     const handleSave = async () => {
         setIsSaving(true);
 
@@ -174,21 +195,14 @@ const NoteEditorPage = () => {
                             </>
                         ) : (
                             <>
-                                <button
-                                    className="note-action-btn edit-btn"
-                                    onClick={() => setIsEditing(true)}
-                                >
-                                    <Eye size={16} />
-                                    Edit Note
-                                </button>
-                                {note?.isOwner && (
+                              
                                     <button
                                         className="note-action-btn delete-btn"
                                         onClick={handleDelete}
                                     >
                                         Delete
                                     </button>
-                                )}
+                               
                             </>
                         )}
                     </div>

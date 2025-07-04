@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -16,32 +15,28 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<TestService>();
 builder.Services.AddScoped<AuthService>();
 
+// Fix: Use "DefaultConnection" to match appsettings.json
 builder.Services.AddDbContext<AppDbContext>((config) => {
-    config.UseSqlite(builder.Configuration.GetConnectionString("SQLite"));   
+    config.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie();
 
+// Fix: Single CORS policy that allows both possible frontend URLs
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins("https://localhost:5173") // Vite default
+        policy.WithOrigins(
+                "https://localhost:5173", // Vite default
+                "https://localhost:59553", // Alternative frontend URL
+                "http://localhost:5173",   // HTTP versions
+                "http://localhost:59553"
+              )
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // <- required for cookies
-    });
-});
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins("https://localhost:59553") // your frontend URL
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+              .AllowCredentials(); // Required for cookies
     });
 });
 
@@ -59,10 +54,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseRouting();
-app.UseCors("AllowFrontend");
-app.UseCors();
-app.UseAuthorization();
 
+// Fix: Use CORS before authentication
+app.UseCors();
+
+// Fix: Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
