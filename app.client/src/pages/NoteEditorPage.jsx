@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, X } from 'lucide-react';
+import { ArrowLeft, Save, Eye, X, Share2, Copy } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import './NoteEditorPage.css';
 
@@ -24,6 +24,9 @@ const NoteEditorPage = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isNewNote, setIsNewNote] = useState(false);
+    const [isPublic, setIsPublic] = useState(false);
+    const [fetchError, setFetchError] = useState('')
+
 
     useEffect(() => {
         if (noteGuid && noteGuid !== 'new') {
@@ -37,6 +40,7 @@ const NoteEditorPage = () => {
                     setNote(data);
                     setTitle(data.title);
                     setContent(data.content);
+                    setIsPublic(data.isPublic);
                 })
                 .catch(err => {
                     console.error('Error loading note:', err);
@@ -70,6 +74,39 @@ const NoteEditorPage = () => {
             });
     }, []);
 
+    useEffect(() => {
+        if (!noteGuid || noteGuid === 'new') return;
+
+        fetch(`/api/Notes/${noteGuid}`, { credentials: 'include' })
+            .then(res => {
+                if (res.status === 401) {
+                    // not signed in → go to login
+                    window.location.href =
+                        `/account/login?returnUrl=${encodeURIComponent(window.location.pathname)}`
+                    throw new Error('Redirecting to login')
+                }
+                if (res.status === 403) {
+                    // signed-in but private note of someone else
+                    setFetchError('You don’t have access to view that note.')
+                    throw new Error('Forbidden')
+                }
+                return res.json()
+            })
+            .then(data => {
+                setNote(data)
+                setTitle(data.title)
+                setContent(data.content)
+                setIsPublic(data.isPublic)
+            })
+            .catch(err => {
+                // suppress the “Redirecting to login” and “Forbidden” internal errors
+                if (!['Redirecting to login', 'Forbidden'].includes(err.message)) {
+                    console.error(err)
+                }
+            })
+    }, [noteGuid])
+
+
     const handleSave = async () => {
         setIsSaving(true);
 
@@ -77,7 +114,7 @@ const NoteEditorPage = () => {
             const payload = {
                 title: title,
                 content,
-                isPublic: false
+                isPublic,
             };
 
             console.log('Sending payload:', payload); // Debug log
@@ -157,6 +194,17 @@ const NoteEditorPage = () => {
         }
     };
 
+    if (fetchError) {
+        return (
+            <div className="note-error">
+                <p>{fetchError}</p>
+                <button onClick={() => window.history.back()}>
+                    Go Back
+                </button>
+            </div>
+        )
+    }
+
     return (
         <div className="note-editor-page">
             <Sidebar />
@@ -219,32 +267,35 @@ const NoteEditorPage = () => {
                     </div>
                 </div>
 
-                {/* Content */}
-                <div className="note-content-section">
-                    <div className="note-content-header">
-                        <h3>Content</h3>
-                        {!isEditing && (
-                            <button
-                                className="note-edit-content-btn"
-                                onClick={() => setIsEditing(true)}
-                            >
-                                <Eye size={16} />
-                                Edit Note
-                            </button>
-                        )}
-                    </div>
+                {/* ─── Main Container ─── */}
+                <div className="note-main-flex">
 
-                    <div className="note-content-box">
-                        {isEditing ? (
-                            <textarea
-                                className="note-content-textarea"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                placeholder="Start writing your note here..."
-                            />
-                        ) : (
-                            <div className="note-content-display">
-                                {content ? (
+                    {/* Content */}
+                    <div className="note-content-section">
+                        <div className="note-content-header">
+                            <h3>Content</h3>
+                            {!isEditing && (
+                                <button
+                                    className="note-edit-content-btn"
+                                    onClick={() => setIsEditing(true)}
+                                >
+                                    <Eye size={16} />
+                                    Edit Note
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="note-content-box">
+                            {isEditing ? (
+                                <textarea
+                                    className="note-content-textarea"
+                                    value={content}
+                                    onChange={(e) => setContent(e.target.value)}
+                                    placeholder="Start writing your note here..."
+                                />
+                            ) : (
+                                <div className="note-content-display">
+                                    {content ? (
                                         <ReactMarkdown
                                             children={content}
                                             remarkPlugins={[remarkGfm, remarkMath]}
@@ -253,15 +304,68 @@ const NoteEditorPage = () => {
                                                 rehypeHighlight,
                                             ]}
                                         />
-                                ) : (
-                                    <p className="note-content-placeholder">
-                                        This note is empty. Click "Edit Note" to start writing.
-                                    </p>
-                                )}
+                                    ) : (
+                                        <p className="note-content-placeholder">
+                                            This note is empty. Click "Edit Note" to start writing.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ─── Sharing Permissions ─── */}
+                    <div className="note-sharing-section">
+                        <h3 className="sharing-header">
+                            <Share2 size={20} />
+                            Sharing Permissions
+                            {note && isPublic && (
+                                <button
+                                    className="copy-link-icon"
+                                    onClick={() => {
+                                        navigator.clipboard
+                                            .writeText(`${window.location.origin}/notes/${note.guid}`)
+                                            .then(() => alert('Link copied!'))
+                                    }}
+                                >
+                                    <Copy size={16} />
+                                </button>
+                            )}
+                        </h3>
+
+                        {isEditing && (
+                            <label className="note-sharing-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={isPublic}
+                                    onChange={() => setIsPublic(v => !v)}
+                                />
+                                Make Public {' '}
+                                (anyone with link can view)
+                            </label>
+                        )}
+
+                        {note && isPublic && (
+                            <div className="note-sharing-link">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={`${window.location.origin}/notes/${note.guid}`}
+                                />
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard
+                                            .writeText(`${window.location.origin}/notes/${note.guid}`)
+                                            .then(() => alert('Link copied!'))
+                                    }}
+                                >
+                                    Copy Link
+                                </button>
                             </div>
                         )}
                     </div>
                 </div>
+
             </div>
         </div>
     );

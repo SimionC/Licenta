@@ -10,6 +10,7 @@ import AllCoursesPage from './pages/AllCoursesPage';
 import CoursePage from './pages/CoursePage';
 import NotesPage from './pages/NotesPage';
 import NoteEditorPage from './pages/NoteEditorPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 //IMPORT MARKDOWN EDITOR
 import 'katex/dist/katex.min.css';       //npm install react-markdown remark-gfm remark-math rehype-katex katex
@@ -53,11 +54,28 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/courses/all" element={<AllCoursesPage userType={userType} />} />
             <Route path="/courses/:courseId" element={<CoursePage />} />
-            <Route path="/notes" element={<NotesPage />} /> 
+            <Route path="/notes" element={<NotesPage />} />
             <Route path="/notes/new" element={<NoteEditorPage />} />
             <Route path="/notes/:noteGuid" element={<NoteEditorPage />} />
-            {/* Add a home or default route later */}
+            {/* protected note routes */}
+            <Route
+                path="/notes/new"
+                element={
+                    <ProtectedRoute>
+                        <NoteEditorPage />
+                    </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/notes/:noteGuid"
+                element={
+                    <ProtectedRoute>
+                        <NoteEditorPage />
+                    </ProtectedRoute>
+                }
+            />
         </Routes>
+        
     );
 }
 

@@ -1,3 +1,6 @@
+/* NoteEditorPage.css */
+
+/* Page Layout */
 .note-editor-page {
     display: flex;
     background-color: #FBF6E9;
@@ -144,8 +147,16 @@
         transform: translateY(-1px);
     }
 
+/* Main Flex Container (wraps content + sharing sidebar) */
+.note-main-flex {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
 /* Content Section */
 .note-content-section {
+    flex: 3;
     background: white;
     border-radius: 12px;
     padding: 1.5rem;
@@ -239,7 +250,96 @@
     margin: 0;
 }
 
-/* Responsive Design */
+/* Sharing Permissions Sidebar */
+.note-sharing-section {
+    flex: 1;
+    background: #fff;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    padding: 1rem;
+    width: 260px;
+}
+
+.sharing-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #2E7D32;
+    margin-bottom: 0.75rem;
+}
+
+.copy-link-icon {
+    margin-left: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #10B981;
+    padding: 0;
+}
+
+/* Make Public Toggle (custom switch) */
+.note-sharing-toggle {
+    display: block;
+    position: relative;
+    padding-left: 50px; /* space for the switch */
+    line-height: 20px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.95rem;
+    color: #374151;
+}
+
+    .note-sharing-toggle input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .note-sharing-toggle::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 40px;
+        height: 20px;
+        background: #1F2937; /* dark off-state */
+        border-radius: 10px;
+        transition: background 0.2s;
+    }
+
+    .note-sharing-toggle::after {
+        content: '';
+        position: absolute;
+        left: 2px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 16px;
+        height: 16px;
+        background: #FFF;
+        border-radius: 50%;
+        transition: transform 0.2s;
+    }
+
+    /* Checked state */
+    .note-sharing-toggle:has(input:checked)::before {
+        background: #10B981; /* green on-state */
+    }
+
+    .note-sharing-toggle:has(input:checked)::after {
+        transform: translate(20px, -50%);
+    }
+
+/* Hide the lower link box completely */
+.note-sharing-link {
+    display: none !important;
+}
+
+/* Responsive */
 @media (max-width: 768px) {
     .note-editor-main {
         padding: 1rem;
@@ -268,12 +368,26 @@
         justify-content: flex-end;
     }
 
-    .note-content-textarea {
-        height: 300px;
-        min-height: 300px;
-    }
-
+    .note-content-textarea,
     .note-content-display {
         min-height: 300px;
+        height: 300px;
     }
+
+    .note-error {
+        padding: 2rem;
+        text-align: center;
+        color: #B91C1C; /* red */
+    }
+
+        .note-error button {
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #374151;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
 }
