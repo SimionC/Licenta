@@ -4,6 +4,17 @@ import { ArrowLeft, Save, Eye, X } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import './NoteEditorPage.css';
 
+//for markdown editor
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+//+ highlighting
+import rehypeHighlight from 'rehype-highlight'
+import 'katex/dist/katex.min.css'
+import 'highlight.js/styles/github.css'
+
+
 const NoteEditorPage = () => {
     const { noteGuid } = useParams();
     const navigate = useNavigate();
@@ -234,7 +245,14 @@ const NoteEditorPage = () => {
                         ) : (
                             <div className="note-content-display">
                                 {content ? (
-                                    <pre className="note-content-text">{content}</pre>
+                                        <ReactMarkdown
+                                            children={content}
+                                            remarkPlugins={[remarkGfm, remarkMath]}
+                                            rehypePlugins={[
+                                                rehypeKatex,
+                                                rehypeHighlight,
+                                            ]}
+                                        />
                                 ) : (
                                     <p className="note-content-placeholder">
                                         This note is empty. Click "Edit Note" to start writing.

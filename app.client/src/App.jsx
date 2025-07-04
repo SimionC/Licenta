@@ -11,6 +11,11 @@ import CoursePage from './pages/CoursePage';
 import NotesPage from './pages/NotesPage';
 import NoteEditorPage from './pages/NoteEditorPage';
 
+//IMPORT MARKDOWN EDITOR
+import 'katex/dist/katex.min.css';       //npm install react-markdown remark-gfm remark-math rehype-katex katex
+import 'highlight.js/styles/github.css'; //npm install rehype-highlight highlight.js
+
+
 
 function App() {
 
