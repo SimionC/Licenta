@@ -2,6 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Eye, X, Share2, Copy } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import CollaboratorsSection from '../components/CollaboratorsSection'
 import './NoteEditorPage.css';
 
 //for markdown editor
@@ -21,148 +22,131 @@ const NoteEditorPage = () => {
     const [note, setNote] = useState(null);
     const [title, setTitle] = useState('Untitled Note');
     const [content, setContent] = useState('# Welcome to your new note\n\nStart writing here...');
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(false); // Controls editing for title, content, and collaboration
     const [isSaving, setIsSaving] = useState(false);
     const [isNewNote, setIsNewNote] = useState(false);
     const [isPublic, setIsPublic] = useState(false);
     const [fetchError, setFetchError] = useState('')
+    const [members, setMembers] = useState([]);
 
-
+    // useEffect to fetch note data when noteGuid changes
     useEffect(() => {
-        if (noteGuid && noteGuid !== 'new') {
-            // Load existing note
-            fetch(`/api/Notes/${noteGuid}`, { credentials: 'include' })
-                .then(res => {
-                    if (!res.ok) throw new Error('Failed to fetch note');
-                    return res.json();
-                })
-                .then(data => {
-                    setNote(data);
-                    setTitle(data.title);
-                    setContent(data.content);
-                    setIsPublic(data.isPublic);
-                })
-                .catch(err => {
-                    console.error('Error loading note:', err);
-                    navigate('/notes');
+        const fetchNote = async () => {
+            if (!noteGuid) {
+                // This means it's a brand new note creation (e.g., /notes/new)
+                setIsNewNote(true);
+                setIsEditing(true); // Start in editing mode for new notes
+                setNote(null); // Ensure note is null for new creations
+                setTitle('Untitled Note');
+                setContent('# Welcome to your new note\\n\\nStart writing here...');
+                setIsPublic(false);
+                setMembers([]); // No members for a new non-collaboration note
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/Notes/${noteGuid}`, {
+                    credentials: 'include'
                 });
-        } else {
-            // New note
-            setIsNewNote(true);
-            setIsEditing(true);
-        }
-    }, [noteGuid, navigate]);
 
-    useEffect(() => {
-        // Check if user is authenticated
-        fetch('/api/auth/me', { credentials: 'include' })
-            .then(res => {
-                if (!res.ok) {
-                    console.log('User not authenticated, redirecting to login');
-                    // Redirect to login or show login form
-                    navigate('/login');
+                if (response.status === 404) {
+                    setFetchError('Note not found or you do not have access.');
+                    setNote(null);
                     return;
                 }
-                return res.json();
-            })
-            .then(data => {
-                console.log('Current user:', data);
-            })
-            .catch(err => {
-                console.error('Auth check failed:', err);
-                navigate('/login');
-            });
-    }, []);
-
-    useEffect(() => {
-        if (!noteGuid || noteGuid === 'new') return;
-
-        fetch(`/api/Notes/${noteGuid}`, { credentials: 'include' })
-            .then(res => {
-                if (res.status === 401) {
-                    // not signed in → go to login
-                    window.location.href =
-                        `/account/login?returnUrl=${encodeURIComponent(window.location.pathname)}`
-                    throw new Error('Redirecting to login')
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch note: ${response.statusText}`);
                 }
-                if (res.status === 403) {
-                    // signed-in but private note of someone else
-                    setFetchError('You don’t have access to view that note.')
-                    throw new Error('Forbidden')
-                }
-                return res.json()
-            })
-            .then(data => {
-                setNote(data)
-                setTitle(data.title)
-                setContent(data.content)
-                setIsPublic(data.isPublic)
-            })
-            .catch(err => {
-                // suppress the “Redirecting to login” and “Forbidden” internal errors
-                if (!['Redirecting to login', 'Forbidden'].includes(err.message)) {
-                    console.error(err)
-                }
-            })
-    }, [noteGuid])
 
+                const data = await response.json();
+                setNote(data);
+                setTitle(data.title);
+                setContent(data.content);
+                setIsPublic(data.isPublic);
+                setIsNewNote(false); // It's an existing note
+
+                // If it's a collaboration note, set members
+                if (data.collaborationId) {
+                    // Fetch members for collaboration notes
+                    const membersRes = await fetch(`/api/Collaborations/${data.collaborationId}`, {
+                        credentials: 'include'
+                    });
+                    if (membersRes.ok) {
+                        const membersData = await membersRes.json();
+                        setMembers(membersData.members || []);
+                    } else {
+                        console.error('Failed to fetch collaboration members');
+                    }
+                } else {
+                    setMembers([]); // Not a collaboration note, clear members
+                }
+
+            } catch (error) {
+                console.error('Error fetching note:', error);
+                setFetchError(`Error loading note: ${error.message}`);
+                setNote(null);
+            }
+        };
+
+        fetchNote();
+    }, [noteGuid]);
+
+    //const handlePublicToggleChange = () => {
+    //    setIsPublic(prev => !prev);
+    //};
 
     const handleSave = async () => {
         setIsSaving(true);
+        setFetchError('');
+
+        // Ensure content is not null when sending
+        const payload = {
+            title: title,
+            content: content || '', // Ensure content is not null
+            isPublic: isPublic,
+            // Include collaborationId in the payload ONLY if the 'note' state already has one.
+            // This preserves it on updates.
+            ...(note?.collaborationId && { collaborationId: note.collaborationId })
+        };
+
+        const url = isNewNote ? '/api/Notes/create' : `/api/Notes/${noteGuid}`;
+        const method = isNewNote ? 'POST' : 'PUT';
 
         try {
-            const payload = {
-                title: title,
-                content,
-                isPublic,
-            };
+            const res = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
 
-            console.log('Sending payload:', payload); // Debug log
-
-            let response;
-            if (isNewNote) {
-                // Create new note
-                response = await fetch('/api/Notes/create', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify(payload)
-                });
-            } else {
-                // Update existing note
-                response = await fetch(`/api/Notes/${noteGuid}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify(payload)
-                });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || 'Failed to save note');
             }
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Server error:', errorText);
-                throw new Error(`Failed to save note: ${response.status} ${response.statusText}`);
-            }
-
-            const savedNote = await response.json();
+            const savedNote = await res.json();
             setNote(savedNote);
-            setTitle(savedNote.title);
-            setContent(savedNote.content);
-            setIsEditing(false);
-            setIsNewNote(false);
+            setIsNewNote(false); // No longer a new note once saved
+            setIsEditing(false); // Exit editing mode after saving
 
-            // If it was a new note, navigate to the saved note's URL
             if (isNewNote) {
-                navigate(`/notes/${savedNote.guid}`, { replace: true });
+                // If it was a new note, navigate to its URL
+                navigate(`/notes/${savedNote.guid}`);
             }
 
-        } catch (error) {
-            console.error('Error saving note:', error);
-            alert(`Failed to save note: ${error.message}`);
+            alert('Note saved successfully!');
+        } catch (err) {
+            console.error('Error saving note:', err);
+            setFetchError(err.message || 'Error saving note.');
+            alert(`Error saving note: ${err.message}`);
         } finally {
             setIsSaving(false);
         }
     };
+
 
     const handleDelete = async () => {
         if (!note || isNewNote) return;
@@ -170,12 +154,22 @@ const NoteEditorPage = () => {
         if (!window.confirm('Are you sure you want to delete this note?')) return;
 
         try {
-            const response = await fetch(`/api/Notes/${noteGuid}`, {
+            //1. delete the note
+            let response = await fetch(`/api/Notes/${noteGuid}`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
 
             if (!response.ok) throw new Error('Failed to delete note');
+
+            // 2️.if it was a collaboration note, delete the collaboration (server will remove members)
+            if (note.collaborationId) {
+                response = await fetch(
+                    `/api/Collaborations/${note.collaborationId}`,
+                    { method: 'DELETE', credentials: 'include' }
+                );
+                if (!response.ok) throw new Error('Failed to delete collaboration');
+            }
 
             navigate('/notes');
         } catch (error) {
@@ -188,9 +182,12 @@ const NoteEditorPage = () => {
         if (isNewNote) {
             navigate('/notes');
         } else {
+            // Revert to original note details if existing note
             setTitle(note.title);
             setContent(note.content);
-            setIsEditing(false);
+            setIsPublic(note.isPublic);
+            setIsEditing(false); // Exit editing mode
+            // If collaborators were modified, you might want to re-fetch them here or store original state
         }
     };
 
@@ -205,6 +202,7 @@ const NoteEditorPage = () => {
         )
     }
 
+    //NoteEditorPage
     return (
         <div className="note-editor-page">
             <Sidebar />
@@ -254,14 +252,17 @@ const NoteEditorPage = () => {
                             </>
                         ) : (
                             <>
-                              
-                                    <button
-                                        className="note-action-btn delete-btn"
-                                        onClick={handleDelete}
-                                    >
-                                        Delete
-                                    </button>
-                               
+                                {/* Only show edit/delete if not a new note, and not currently editing */}
+                                {!isNewNote && (
+                                    <>
+                                        <button
+                                            className="note-action-btn delete-btn"
+                                            onClick={handleDelete}
+                                        >
+                                            Delete
+                                        </button>
+                                    </>
+                                )}
                             </>
                         )}
                     </div>
@@ -274,7 +275,7 @@ const NoteEditorPage = () => {
                     <div className="note-content-section">
                         <div className="note-content-header">
                             <h3>Content</h3>
-                            {!isEditing && (
+                            {!isEditing && ( // Only show "Edit Note" button when not in editing mode
                                 <button
                                     className="note-edit-content-btn"
                                     onClick={() => setIsEditing(true)}
@@ -333,7 +334,7 @@ const NoteEditorPage = () => {
                             )}
                         </h3>
 
-                        {isEditing && (
+                        {isEditing && ( // Only show public toggle when in editing mode
                             <label className="note-sharing-toggle">
                                 <input
                                     type="checkbox"
@@ -343,6 +344,17 @@ const NoteEditorPage = () => {
                                 Make Public {' '}
                                 (anyone with link can view)
                             </label>
+                        )}
+
+                        {/* ──────── COLLABORATORS BOX ───────── */}
+                        {note?.collaborationId && (
+                            <CollaboratorsSection
+                                collaborationId={note.collaborationId}
+                                collaborators={members}
+                                setCollaborators={setMembers}
+                                // Pass isEditing from parent to control CollaboratorsSection's internal edit state
+                                parentIsEditing={isEditing}
+                            />
                         )}
 
                         {note && isPublic && (

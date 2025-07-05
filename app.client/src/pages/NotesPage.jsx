@@ -5,16 +5,7 @@ import FolderCard from '../components/FolderCard';
 import NotesNoteCard from '../components/NotesNoteCard';
 import { Users, Plus, FolderPlus } from 'lucide-react';
 
-
 const mockFolders = ['Databases', 'Finance', 'Management', 'Data Structures'];
-
-//const mockNotes = [
-//    { id: 1, title: 'Week 1 Summary', tag: 'Databases', desc: 'Introduction to database concepts...', date: 'Jan 15' },
-//    { id: 2, title: 'Financial Ratios', tag: 'Finance', desc: 'Key ratios for analyzing performance...', date: 'Jan 14' },
-//    { id: 3, title: 'Leadership Styles', tag: 'Management', desc: 'Different approaches to leadership...', date: 'Jan 13' },
-//    { id: 4, title: 'Binary Trees', tag: 'Data Structures', desc: 'Understanding tree structures...', date: 'Jan 12' },
-//    { id: 5, title: 'SQL Queries', tag: 'Databases', desc: 'Advanced SQL techniques...', date: 'Jan 10' },
-//];
 
 const NotesPage = () => {
     const navigate = useNavigate();
@@ -48,8 +39,8 @@ const NotesPage = () => {
     };
 
     const handleCreateCollaboration = () => {
-        // TODO: Implement collaboration creation
-        alert('Collaboration feature coming soon!');
+        // Navigate to collaboration creation page
+        navigate('/collaborations/new');
     };
 
     if (loading) {
@@ -129,12 +120,18 @@ const NotesPage = () => {
                                     </div>
                                 ) : (
                                     notes.map(note => (
-                                        <div key={note.id} onClick={() => navigate(`/notes/${note.guid}`)}>
+                                        <div key={note.id} onClick={() => {
+                                            const isCollab = Boolean(note.collaborationId);
+                                            const url = isCollab
+                                                ? `/collaborations/${note.collaborationId}/notes/${note.guid}`
+                                                : `/notes/${note.guid}`;
+                                            navigate(url);
+                                        }} >
                                             <NotesNoteCard
                                                 note={{
                                                     id: note.id,
                                                     title: note.title,
-                                                    tag: note.isPublic ? 'Public' : 'Private',
+                                                    tag: note.collaborationId ? 'Collaboration' : note.isPublic ? 'Public' : 'Private',
                                                     desc: note.content.substring(0, 100) + (note.content.length > 100 ? '...' : ''),
                                                     date: new Date(note.updatedAt || note.createdAt).toLocaleDateString()
                                                 }}

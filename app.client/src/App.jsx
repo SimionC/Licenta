@@ -2,7 +2,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import axios from 'axios';
-    // Import components
+// Import components
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -10,6 +10,8 @@ import AllCoursesPage from './pages/AllCoursesPage';
 import CoursePage from './pages/CoursePage';
 import NotesPage from './pages/NotesPage';
 import NoteEditorPage from './pages/NoteEditorPage';
+import CreateCollaborationPage from './pages/CreateCollaborationPage';
+import CollaborationDetailPage from './pages/CollaborationDetailPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 //IMPORT MARKDOWN EDITOR
@@ -23,7 +25,7 @@ function App() {
     const [userType, setUserType] = useState("");
 
     useEffect(() => {
-        fetch("/api/Auth/Me", {credentials: "include" })
+        fetch("/api/Auth/Me", { credentials: "include" })
             .then((res) => {
                 if (!res.ok) throw new Error("Not logged in");
                 return res.json();
@@ -49,6 +51,7 @@ function App() {
 
     return (
         <Routes>
+            {/* Public Routes */}
             <Route path="/" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
@@ -56,26 +59,59 @@ function App() {
             <Route path="/courses/:courseId" element={<CoursePage />} />
             <Route path="/notes" element={<NotesPage />} />
             <Route path="/notes/new" element={<NoteEditorPage />} />
-            <Route path="/notes/:noteGuid" element={<NoteEditorPage />} />
+            {/*<Route path="/notes/:noteGuid" element={<NoteEditorPage />} />*/}
+            {/*<Route path="/collaborations/new" element={<CreateCollaborationPage />} />*/}
             {/* protected note routes */}
-            <Route
-                path="/notes/new"
-                element={
-                    <ProtectedRoute>
-                        <NoteEditorPage />
-                    </ProtectedRoute>
-                }
-            />
-            <Route
-                path="/notes/:noteGuid"
-                element={
-                    <ProtectedRoute>
-                        <NoteEditorPage />
-                    </ProtectedRoute>
-                }
-            />
+            {/* Wrap components that require authentication with ProtectedRoute */}
+
+            <Route path="/notes" element={
+                <ProtectedRoute>
+                    <NotesPage />
+                </ProtectedRoute>
+            } />
+
+            {/* Route for creating a new regular note */}
+            <Route path="/notes/new" element={
+                <ProtectedRoute>
+                    <NoteEditorPage />
+                </ProtectedRoute>
+            } />
+
+            {/* Route for editing an existing regular note */}
+            <Route path="/notes/:noteGuid" element={
+                <ProtectedRoute>
+                    <NoteEditorPage />
+                </ProtectedRoute>
+            } />
+
+            {/* Route for creating a new collaboration */}
+            <Route path="/collaborations/new" element={
+                <ProtectedRoute>
+                    <CreateCollaborationPage />
+                </ProtectedRoute>
+            } />
+
+            {/* Route for viewing collaboration details (e.g., listing notes in a collaboration) */}
+            <Route path="/collaborations/:collabId" element={
+                <ProtectedRoute>
+                    <CollaborationDetailPage />
+                </ProtectedRoute>
+            } />
+
+            {/*
+                    CRUCIAL CHANGE HERE:
+                    This path, which was previously for CollaborationNotePage,
+                    now also points to NoteEditorPage.
+                    NoteEditorPage will use both :collabId (if present) and :noteGuid.
+                */}
+            <Route path="/collaborations/:collabId/notes/:noteGuid" element={
+                <ProtectedRoute>
+                    <NoteEditorPage />
+                </ProtectedRoute>
+            } />
+
         </Routes>
-        
+
     );
 }
 

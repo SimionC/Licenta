@@ -62,6 +62,49 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
+        // GET: api/Notes/accessible-notes
+        [HttpGet("accessible-notes")]
+        public async Task<ActionResult<IEnumerable<NoteModel>>> GetAccessibleNotes()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            // Get user's collaborations
+            var userCollaborationIds = await _context.CollaborationMembers
+                .Where(cm => cm.UserId == userId.Value)
+                .Select(cm => cm.CollaborationId)
+                .ToListAsync();
+
+            var notes = await _context.Notes
+                .Where(n =>
+                    // User's own notes
+                    n.UserId == userId.Value ||
+                    // Notes in collaborations user is part of
+                    (n.CollaborationId != null && userCollaborationIds.Contains(n.CollaborationId.Value)) ||
+                    // Public notes
+                    n.VisibilityTypeId == 2
+                )
+                .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
+                .Select(n => new NoteModel
+                {
+                    Id = n.Id,
+                    Title = n.Title,
+                    Content = n.Text,
+                    CreatedAt = n.CreationDate,
+                    UpdatedAt = n.ModifyDate,
+                    UserId = n.UserId,
+                    IsPublic = n.VisibilityTypeId == 2,
+                    CollaborationId = n.CollaborationId,
+                    Guid = n.Guid
+                })
+                .ToListAsync();
+
+            return Ok(notes);
+        }
+
         // GET: api/Notes/{guid}
         [HttpGet("{guid}")]
         public async Task<ActionResult<NoteModel>> GetNote(string guid)
@@ -69,6 +112,7 @@ namespace App.Server.Controllers
             var note = await _context.Notes
                 .Include(n => n.User)
                 .Include(n => n.VisibilityType)
+                .Include(n => n.Collaboration)
                 .FirstOrDefaultAsync(n => n.Guid == guid);
 
             if (note == null)
@@ -79,7 +123,35 @@ namespace App.Server.Controllers
             var currentUserId = GetCurrentUserId();
 
             // Check if user can access this note
-            if (note.UserId != currentUserId && note.VisibilityTypeId != 2) // Not owner and not public
+            bool canAccess = false;
+            string userRole = null;
+
+            // Owner can always access
+            if (note.UserId == currentUserId)
+            {
+                canAccess = true;
+                userRole = "owner";
+            }
+            // Public notes can be accessed by anyone
+            else if (note.VisibilityTypeId == 2)
+            {
+                canAccess = true;
+                userRole = "viewer"; // Public access is read-only
+            }
+            // Check if user is part of the collaboration
+            else if (note.CollaborationId != null && currentUserId != null)
+            {
+                var collaborationMember = await _context.CollaborationMembers
+                    .FirstOrDefaultAsync(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == currentUserId.Value);
+
+                if (collaborationMember != null)
+                {
+                    canAccess = true;
+                    userRole = collaborationMember.Role;
+                }
+            }
+
+            if (!canAccess)
             {
                 return Forbid();
             }
@@ -97,6 +169,9 @@ namespace App.Server.Controllers
                 Guid = note.Guid
             };
 
+            // You might want to add user role information to the response
+            Response.Headers.Add("X-User-Role", userRole);
+
             return Ok(noteModel);
         }
 
@@ -108,6 +183,18 @@ namespace App.Server.Controllers
             if (userId == null)
             {
                 return Unauthorized();
+            }
+
+            // If collaboration is specified, check if user is a member
+            if (noteModel.CollaborationId != null)
+            {
+                var isMember = await _context.CollaborationMembers
+                    .AnyAsync(cm => cm.CollaborationId == noteModel.CollaborationId && cm.UserId == userId.Value);
+
+                if (!isMember)
+                {
+                    return Forbid("You are not a member of this collaboration");
+                }
             }
 
             var note = new Note
@@ -157,10 +244,28 @@ namespace App.Server.Controllers
                 return NotFound();
             }
 
-            // Check if user owns this note
-            if (note.UserId != userId.Value)
+            // Check if user can edit this note
+            bool canEdit = false;
+
+            // Owner can always edit
+            if (note.UserId == userId.Value)
             {
-                return Forbid();
+                canEdit = true;
+            }
+            // Check if user is part of the collaboration with edit permissions
+            else if (note.CollaborationId != null)
+            {
+                var memberRole = await _context.CollaborationMembers
+                    .Where(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == userId.Value)
+                    .Select(cm => cm.Role)
+                    .FirstOrDefaultAsync();
+
+                canEdit = memberRole == "owner" || memberRole == "editor";
+            }
+
+            if (!canEdit)
+            {
+                return Forbid("You don't have permission to edit this note");
             }
 
             // Update note properties
@@ -168,7 +273,12 @@ namespace App.Server.Controllers
             note.Text = noteModel.Content ?? note.Text;
             note.ModifyDate = DateTime.UtcNow;
             note.VisibilityTypeId = noteModel.IsPublic ? 2 : 1;
-            note.CollaborationId = noteModel.CollaborationId;
+
+            // Only allow owner to change collaboration
+            if (note.UserId == userId.Value)
+            {
+                note.CollaborationId = noteModel.CollaborationId;
+            }
 
             _context.Entry(note).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -205,10 +315,10 @@ namespace App.Server.Controllers
                 return NotFound();
             }
 
-            // Check if user owns this note
+            // Only owner can delete notes
             if (note.UserId != userId.Value)
             {
-                return Forbid();
+                return Forbid("Only the note owner can delete this note");
             }
 
             _context.Notes.Remove(note);
@@ -242,9 +352,9 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
-        // GET: api/Notes/shared/{collaborationId}
-        [HttpGet("shared/{collaborationId}")]
-        public async Task<ActionResult<IEnumerable<NoteModel>>> GetSharedNotes(int collaborationId)
+        // GET: api/Notes/collaboration/{collaborationId}
+        [HttpGet("collaboration/{collaborationId}")]
+        public async Task<ActionResult<IEnumerable<NoteModel>>> GetCollaborationNotes(int collaborationId)
         {
             var userId = GetCurrentUserId();
             if (userId == null)
@@ -252,8 +362,14 @@ namespace App.Server.Controllers
                 return Unauthorized();
             }
 
-            // TODO: Add logic to check if user is part of the collaboration
-            // For now, just return notes with the collaboration ID
+            // Check if user is part of the collaboration
+            var isMember = await _context.CollaborationMembers
+                .AnyAsync(cm => cm.CollaborationId == collaborationId && cm.UserId == userId.Value);
+
+            if (!isMember)
+            {
+                return Forbid("You are not a member of this collaboration");
+            }
 
             var notes = await _context.Notes
                 .Where(n => n.CollaborationId == collaborationId)
@@ -275,24 +391,38 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
+        // GET: api/Notes/my-collaborations-with-notes
+        [HttpGet("my-collaborations-with-notes")]
+        public async Task<ActionResult<IEnumerable<object>>> GetMyCollaborationsWithNotes()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var collaborationsWithNotes = await _context.CollaborationMembers
+                .Where(cm => cm.UserId == userId.Value)
+                .Include(cm => cm.Collaboration)
+                .Select(cm => new
+                {
+                    CollaborationId = cm.Collaboration.Id,
+                    CollaborationName = cm.Collaboration.Name,
+                    MyRole = cm.Role,
+                    NoteCount = _context.Notes.Count(n => n.CollaborationId == cm.Collaboration.Id)
+                })
+                .ToListAsync();
+
+            return Ok(collaborationsWithNotes);
+        }
+
         private int? GetCurrentUserId()
         {
-            // Debug: Log all claims to see what's available
-            Console.WriteLine("=== User Claims ===");
-            foreach (var claim in User.Claims)
-            {
-                Console.WriteLine($"Type: {claim.Type}, Value: {claim.Value}");
-            }
-            Console.WriteLine("=== End Claims ===");
-
-            // Check if user is authenticated
             if (!User.Identity.IsAuthenticated)
             {
-                Console.WriteLine("User is not authenticated");
                 return null;
             }
 
-            // Try different claim types commonly used for user ID
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ??
                              User.FindFirst("sub") ??
                              User.FindFirst("id") ??
@@ -301,11 +431,9 @@ namespace App.Server.Controllers
 
             if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userId))
             {
-                Console.WriteLine($"Found user ID: {userId}");
                 return userId;
             }
 
-            Console.WriteLine("No valid user ID claim found");
             return null;
         }
     }
