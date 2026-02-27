@@ -5,6 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Server.ORM;
 
+/// Purpose: primary user entity used by auth, courses, notes, collaborations.
+/// Key relations: foreign key to UserType via UserTypeId.
 public partial class User
 {
     [Key]

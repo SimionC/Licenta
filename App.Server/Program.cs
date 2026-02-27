@@ -3,6 +3,10 @@ using App.Server.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
+//Purpose: App bootstrap (DI, EF Core SQLite, cookie auth, CORS, middleware pipeline, controller mapping).
+//Inputs/Outputs: Reads appsettings connection string and environment; exposes API endpoints and static SPA fallback.
+//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Services/AuthService.cs, App.Server/Services/TestService.cs.
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

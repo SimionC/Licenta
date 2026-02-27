@@ -3,6 +3,11 @@ import React from 'react';
 import './CourseAssignmentBox.css';
 import { Calendar, Clock } from 'lucide-react';
 
+/**
+ * Purpose: presentational assignment summary card.
+ * Contract: status controls visual badge class; no API side effects.
+ */
+
 const CourseAssignmentBox = ({ title, description, deadline, status }) => {
     return (
         <div className="course-assignment-box">

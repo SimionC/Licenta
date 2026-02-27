@@ -9,6 +9,10 @@ using System.Security.Claims;
 
 namespace App.Server.Controllers;
 
+//Purpose: Authentication endpoints (register, login, me) and cookie sign-in.
+//Inputs/Outputs: Receives RegisterModel/LoginModel; sets cookie claims; returns lightweight identity payload.
+//Depends on: App.Server/Services/AuthService.cs, cookie auth configured in App.Server/Program.cs.
+
 [ApiController]
 [Route("api/[controller]/[action]")]
 public class AuthController : ControllerBase
@@ -20,6 +24,10 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    //Trigger: POST register.
+    //Guards: Rejects when AuthService says existing user.
+    //Actions: Builds claims, signs in cookie principal.
+    //Result: 200 OK + active session.
     [HttpPost]
     public async Task<IActionResult> Register(RegisterModel registerModel)
     {
@@ -48,6 +56,10 @@ public class AuthController : ControllerBase
     }    
     
     [HttpPost]
+    //Trigger: POST login.
+    //Guards: Invalid credentials return bad request.
+    //Actions: Builds claims including userId and role info, signs in.
+    //Result: 200 OK + active session.
     public async Task<IActionResult> Login(LoginModel loginModel)
     {
         RegisterModel? result = _authService.Login(loginModel);
@@ -76,6 +88,10 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet]
+    //Trigger: GET current user.
+    //Guards: Requires authenticated identity.
+    //Actions: Reads claims Name/Email/UserTypeId.
+    //Result: Returns name/email/userType (teacher/student).
     public IActionResult Me()
     {
         if (!User.Identity.IsAuthenticated)

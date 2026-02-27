@@ -8,6 +8,12 @@ import Schedule from '../components/Schedule';
 import { Clock } from "react-feather";
 import { BookOpen, FileText } from 'lucide-react';
 
+/**
+ * Purpose: Landing dashboard with recent courses, notes, and upcoming assignments snapshot.
+ * API touched: GET /api/Course/{id} for locally tracked recent IDs.
+ * Side effects: reads localStorage key recentCourses_{userEmail}.
+ */
+
 const DashboardPage = () => {
     const [recentCourses, setRecentCourses] = useState([]);
 
@@ -54,10 +60,10 @@ const DashboardPage = () => {
         },
     ];
 
+    // useEffect recent list: resolves stored course IDs into full course cards.
     useEffect(() => {
         setRecentCourses(mockCourses);
     }, []);
-
 
     useEffect(() => {
         const userEmail = localStorage.getItem("userEmail");

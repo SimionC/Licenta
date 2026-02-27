@@ -2,6 +2,12 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'  // check `user`
 
+/**
+ * Purpose: Route gate for private pages.
+ * Guards: waits for auth check; redirects when user is missing.
+ * Navigation side effect: sends unauthenticated users to login with returnUrl.
+ */
+
 export default function ProtectedRoute({ children }) {
     const { user, loading } = useAuth()
     const location = useLocation()

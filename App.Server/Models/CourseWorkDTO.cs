@@ -1,4 +1,7 @@
-﻿namespace App.Server.Models
+﻿// Purpose: input DTO for course assignment creation.
+// Contract: title required, description optional, deadline optional.
+
+namespace App.Server.Models
 {
     public class CourseWorkDTO
     {

@@ -2,6 +2,10 @@
 using App.Server.ORM;
 using Microsoft.AspNetCore.Mvc;
 
+//Purpose: Course lifecycle and coursework endpoints.
+//Inputs/Outputs: Uses body DTOs plus current user claims; returns course/coursework lists and created entities.
+//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Models/CourseModel.cs, App.Server/Models/CourseWorkDTO.cs.
+
 [ApiController]
 [Route("api/[controller]")]
 public class CourseController : ControllerBase
@@ -13,7 +17,11 @@ public class CourseController : ControllerBase
         _context = context;
     }
 
-    // Create new course
+
+    //Trigger: POST create.
+    //Guards: Validates title/description; requires Email claim.
+    //Actions: Finds teacher user, generates join password, inserts course.
+    //Result: Returns created course.
     [HttpPost("create")]
     public IActionResult CreateCourse([FromBody] CourseModel model)
     {
@@ -52,7 +60,11 @@ public class CourseController : ControllerBase
         return Ok(course);
     }
 
-    // Get all courses (used on refresh)
+
+    //Trigger: GET all - courses (used on refresh).
+    //Guards: Requires Email/UserTypeId/userId claims.
+    //Actions: If teacher, filters by TeacherId; otherwise returns all.
+    //Result: Role-specific course list.
     [HttpGet("all")]
     public IActionResult GetAllCourses()
     {
@@ -79,7 +91,12 @@ public class CourseController : ControllerBase
         return Ok(_context.Courses.ToList());
     }
 
-    // Delete a course by ID
+
+
+    //Trigger: DELETE course by id.
+    //Guards: Not found returns 404.
+    //Actions: Removes course row.
+    //Result: 204 NoContent.
     [HttpDelete("delete/{id}")]
     public IActionResult DeleteCourse(int id)
     {
@@ -91,6 +108,11 @@ public class CourseController : ControllerBase
         return NoContent();
     }
 
+
+    //Trigger: POST join with password.
+    //Guards: Requires auth user and valid password.
+    //Actions: Ensures membership row exists in UsersCourses.
+    //Result: Returns joined course.
     [HttpPost("join")]
     public IActionResult JoinCourse([FromBody] string password)
     {
@@ -122,6 +144,10 @@ public class CourseController : ControllerBase
     }
 
 
+    //Trigger: GET student - the courses for each student.
+    //Guards: Requires authenticated user lookup.
+    //Actions: Splits into registered and others.
+    //Result: Returns object with both lists.
     [HttpGet("student")]
     public IActionResult GetStudentCourses()
     {
@@ -151,6 +177,11 @@ public class CourseController : ControllerBase
         });
     }
 
+
+    //Trigger: GET by course id.
+    //Guards: Not found returns 404.
+    //Actions: Reads single course.
+    //Result: Course payload.
     [HttpGet("{id}")]
     public IActionResult GetCourse(int id)
     {
@@ -161,6 +192,11 @@ public class CourseController : ControllerBase
         return Ok(course);
     }
 
+
+    //Trigger: POST courseId/createCoursework.
+    //Guards: Course must exist.
+    //Actions: Creates coursework row linked to course.
+    //Result: Created coursework payload.
     [HttpPost("{courseId}/coursework")]
     public IActionResult CreateCourseWork(int courseId, [FromBody] CourseWorkDTO dto)
     {
@@ -182,6 +218,11 @@ public class CourseController : ControllerBase
         return Ok(courseWork);
     }
 
+
+    //Trigger: GET courseId/getCourseWork.
+    //Guards: None beyond route validity.   
+    //Actions: Filters coursework by CourseId.
+    //Result: List of coursework items.
     [HttpGet("{courseId}/courseworks")]
     public IActionResult GetCourseWorksForCourse(int courseId)
     {

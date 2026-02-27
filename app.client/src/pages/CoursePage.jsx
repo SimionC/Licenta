@@ -8,8 +8,13 @@ import ResourceCard from '../components/ResourceCard';
 import CreateCourseWorkForm from '../components/CreateCourseWorkForm';
 import CourseAssignmentBox from '../components/CourseAssignmentBox';
 import './CoursePage.css';
-
 //import axios from 'axios';
+
+/**
+ * Purpose: Single-course view (description, resources tab, assignments tab).
+ * API touched: GET /api/Course/{courseId}, GET/POST /api/Course/{courseId}/courseworks.
+ * UI contract: teacher-only actions (join code visibility and assignment creation).
+ */
 
 const mockResources = [
     {
@@ -47,7 +52,7 @@ const CoursePage = () => {
     const [showForm, setShowForm] = useState(false);
     const [showAssignModal, setShowAssignModal] = useState(false);
 
-
+    // useEffect(courseId): loads course metadata + assignment list.
     useEffect(() => {
         // 1) fetch the course metadata
         fetch(`/api/Course/${courseId}`)

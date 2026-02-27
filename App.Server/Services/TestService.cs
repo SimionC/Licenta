@@ -1,5 +1,9 @@
 ﻿using App.Server.ORM;
 
+/// Purpose: lightweight diagnostic service currently used by WeatherForecast endpoint. ???
+/// Dependency: uses AppDbContext directly.
+/// Note: TestMethod reads all users and has no business-side return value.
+
 namespace App.Server.Services
 {
     public class TestService

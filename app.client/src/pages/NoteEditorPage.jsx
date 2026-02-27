@@ -15,6 +15,11 @@ import rehypeHighlight from 'rehype-highlight'
 import 'katex/dist/katex.min.css'
 import 'highlight.js/styles/github.css'
 
+/**
+ * Purpose: Unified create/edit/read page for both personal and collaboration notes.
+ * API touched: GET/POST/PUT/DELETE /api/Notes..., GET/DELETE /api/Collaborations...
+ * State contract: noteGuid controls new-vs-existing mode; collaborationId controls collaborator panel.
+ */
 
 const NoteEditorPage = () => {
     const { noteGuid } = useParams();
@@ -31,6 +36,8 @@ const NoteEditorPage = () => {
 
     // useEffect to fetch note data when noteGuid changes
     useEffect(() => {
+
+        // fetchNote effect: initializes editor for new note or loads existing note + members.
         const fetchNote = async () => {
             if (!noteGuid) {
                 // This means it's a brand new note creation (e.g., /notes/new)
@@ -95,6 +102,7 @@ const NoteEditorPage = () => {
     //    setIsPublic(prev => !prev);
     //};
 
+    // handleSave: builds payload, selects POST vs PUT, then syncs local state and route.
     const handleSave = async () => {
         setIsSaving(true);
         setFetchError('');
@@ -147,7 +155,7 @@ const NoteEditorPage = () => {
         }
     };
 
-
+    // handleDelete: deletes note; for collaboration notes also deletes collaboration container.
     const handleDelete = async () => {
         if (!note || isNewNote) return;
 
@@ -178,6 +186,7 @@ const NoteEditorPage = () => {
         }
     };
 
+    // handleCancel: restores loaded values (existing) or exits to notes list (new).
     const handleCancel = () => {
         if (isNewNote) {
             navigate('/notes');

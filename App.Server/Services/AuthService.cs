@@ -4,6 +4,10 @@ using System.Runtime.Intrinsics.Arm;
 using System.Security.Cryptography;
 using System.Text;
 
+//Purpose: Registration/login business rules and credential checks.
+//Inputs/Outputs: Accepts register/login DTOs; writes user records and returns profile model on successful login.
+//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/ORM/User.cs.
+
 namespace App.Server.Services;
 
 public class AuthService

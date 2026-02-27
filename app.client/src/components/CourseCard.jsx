@@ -2,6 +2,11 @@
 import React from 'react';
 import './CourseCard.css';
 
+/**
+ * Purpose: minimal dashboard card for recent courses.
+ * Contract: read-only display component.
+ */
+
 const CourseCard = ({ course }) => {
     return (
         <div className="course-card">

@@ -7,11 +7,18 @@ import { Users, Plus, FolderPlus } from 'lucide-react';
 
 const mockFolders = ['Databases', 'Finance', 'Management', 'Data Structures'];
 
+/**
+ * Purpose: Notes index page with create actions and navigation into note editor routes.
+ * API touched: GET /api/Notes/my-notes.
+ * Route contract: collaboration notes route to /collaborations/{id}/notes/{guid}, personal notes to /notes/{guid}.
+ */
+
 const NotesPage = () => {
     const navigate = useNavigate();
     const [notes, setNotes] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    // useEffect: fetches current user's notes and resolves loading state.
     useEffect(() => {
         // Fetch user's notes
         fetch('/api/Notes/my-notes', { credentials: 'include' })

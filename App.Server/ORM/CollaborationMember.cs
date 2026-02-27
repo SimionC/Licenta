@@ -2,6 +2,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+/// Purpose: membership + role mapping for collaboration access.
+/// Role contract: owner/editor/viewer determines note/collaboration permissions.
+
 namespace App.Server.ORM
 {
     public class CollaborationMember

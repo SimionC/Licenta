@@ -3,6 +3,11 @@ import { NavLink } from 'react-router-dom';
 import { BookOpen, LayoutDashboard, FileText } from 'lucide-react';
 import './Sidebar.css';
 
+/**
+ * Purpose: global navigation shell for dashboard, courses, and notes areas.
+ * Contract: route links are hardcoded and should mirror App route map.
+ */
+
 const Sidebar = () => {
     return (
         <div className="sidebar">

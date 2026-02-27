@@ -4,6 +4,10 @@ using App.Server.ORM;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
+//Purpose: Collaboration CRUD, membership roles, invites, and member management.
+//Inputs/Outputs: Uses current user identity and body models; returns collaboration summary/detail shapes.
+//Depends on: App.Server/ORM/AppDbContext.cs, inline model classes at file bottom.
+
 namespace App.Server.Controllers
 {
     [ApiController]
@@ -18,7 +22,11 @@ namespace App.Server.Controllers
             _context = context;
         }
 
-        // GET: api/Collaborations/my-collaborations
+
+        //Trigger: GET api/Collaborations/my-collaborations.
+        //Guards: Requires current user id.
+        //Actions: Joins membership + collaboration + creator + member count.
+        //Result: List of collaborations user belongs to.
         [HttpGet("my-collaborations")]
         public async Task<ActionResult<IEnumerable<CollaborationModel>>> GetMyCollaborations()
         {
@@ -47,7 +55,11 @@ namespace App.Server.Controllers
             return Ok(collaborations);
         }
 
-        // GET: api/Collaborations/{id}
+        
+        //Trigger: GET collaboration by api/Collaborations/{id}.
+        //Guards: User must be member.
+        //Actions: Loads collaboration and member details with roles.
+        //Result: Collaboration detail payload.
         [HttpGet("{id}")]
         public async Task<ActionResult<CollaborationDetailModel>> GetCollaboration(int id)
         {
@@ -99,7 +111,11 @@ namespace App.Server.Controllers
             return Ok(collaborationDetail);
         }
 
-        // POST: api/Collaborations/create
+        
+        //Trigger: POST api/Collaborations/create.
+        //Guards: Requires auth user id.
+        //Actions: Creates collaboration, adds creator as owner, adds invited users as editors.
+        //Result: 201 Created with summary model.
         [HttpPost("create")]
         public async Task<ActionResult<CollaborationModel>> CreateCollaboration(CreateCollaborationModel model)
         {
@@ -160,7 +176,11 @@ namespace App.Server.Controllers
             return CreatedAtAction(nameof(GetCollaboration), new { id = collaboration.Id }, collaborationModel);
         }
 
-        // PUT: api/Collaborations/{id}/members/{memberId}
+        
+        //Trigger: PUT api/Collaborations/{id}/members/{memberId}.
+        //Guards: Only collaboration owner can change roles; owner role itself cannot be changed.
+        //Actions: Updates target member role.
+        //Result: 200 OK.
         [HttpPut("{id}/members/{memberId}")]
         public async Task<IActionResult> UpdateMemberRole(int id, int memberId, UpdateMemberRoleModel model)
         {
@@ -197,7 +217,11 @@ namespace App.Server.Controllers
             return Ok();
         }
 
-        // DELETE: api/Collaborations/{id}/members/{memberId}
+     
+        //Trigger: DELETE api/Collaborations/{id}/members/{memberId}.
+        //Guards: Only owner can remove; owner cannot remove self-owner entry.
+        //Actions: Deletes membership row.
+        //Result: 200 OK.
         [HttpDelete("{id}/members/{memberId}")]
         public async Task<IActionResult> RemoveMember(int id, int memberId)
         {
@@ -234,26 +258,34 @@ namespace App.Server.Controllers
             return Ok();
         }
 
-        // DELETE: api/Collaborations/{id}
+        
+        //Trigger: DELETE collaboration by api/Collaborations/{id}.
+        //Guards: Checks existence (note: no explicit ownership check here currently).
+        //Actions: Removes collaboration members, then collaboration.
+        //Result: 204 NoContent.
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCollaboration(int id)
         {
-            // 1️⃣ find the collaboration
+            // 1️. find the collaboration
             var collab = await _context.Collaborations
                 .FirstOrDefaultAsync(c => c.Id == id);
             if (collab == null)
                 return NotFound();
-            // 2️⃣ delete all member records for that collaboration
+            // 2️. delete all member records for that collaboration
             var members = _context.CollaborationMembers
                 .Where(cm => cm.CollaborationId == id);
             _context.CollaborationMembers.RemoveRange(members);
-            // 3️⃣ delete the collaboration itself
+            // 3️. delete the collaboration itself
             _context.Collaborations.Remove(collab);
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // POST: api/Collaborations/{id}/invite
+        
+        //Trigger: POST api/Collaborations/{id}/invite.
+        //Guards: Requester must be owner/editor; invited user must exist and not already be a member.
+        //Actions: Adds member with provided/default role.
+        //Result: 200 OK.
         [HttpPost("{id}/invite")]
         public async Task<IActionResult> InviteUser(int id, InviteUserModel model)
         {
@@ -303,6 +335,10 @@ namespace App.Server.Controllers
         }
 
         // Helper method to get current user ID
+        //Trigger: Internal identity parsing.
+        //Guards: Null when unauthenticated/missing claims.
+        //Actions: Tries several claim keys.
+        //Result: Nullable int user id.
         private int? GetCurrentUserId()
         {
             if (!User.Identity.IsAuthenticated)

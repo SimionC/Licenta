@@ -1,6 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+/// Purpose: per-user note permission table.
+/// Current reality: collaboration-role logic is primarily enforced in controllers; 
+///                  this table is not central yet.
+
 namespace App.Server.ORM
 {
     public class NotePermission

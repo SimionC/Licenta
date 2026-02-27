@@ -5,6 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Server.ORM;
 
+/// Purpose: join table for student enrollments in courses.
+/// Key relations: UserId + CourseId map memberships.
 public partial class UserCourse
 {
 

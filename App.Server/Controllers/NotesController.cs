@@ -4,6 +4,10 @@ using App.Server.ORM;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
+//Purpose: Full notes CRUD + access control (owner/public/collaboration member).
+//Inputs/Outputs: Uses current user claims + note guid/collaboration id; maps Note entity to NoteModel DTO.
+//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Models/NoteModel.cs (namespace currently App.Server.ORM).
+
 namespace App.Server.Controllers
 {
     [ApiController]
@@ -18,7 +22,11 @@ namespace App.Server.Controllers
             _context = context;
         }
 
-        // GET: api/Notes/test-auth
+
+        //Trigger: GET api/Notes/test-auth.
+        //Guards: Controller-level authorize.
+        //Actions: Dumps auth state and claims.
+        //Result: Debug auth snapshot.
         [HttpGet("test-auth")]
         public IActionResult TestAuth()
         {
@@ -32,7 +40,11 @@ namespace App.Server.Controllers
             });
         }
 
-        // GET: api/Notes/my-notes
+
+        //Trigger: GET api/Notes/my-notes.
+        //Guards: Requires current user id.
+        //Actions: Filters notes by owner, orders recent first, maps DTO.
+        //Result: User-owned notes list.
         [HttpGet("my-notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetMyNotes()
         {
@@ -62,7 +74,11 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
-        // GET: api/Notes/accessible-notes
+
+        //Trigger: GET api/Notes/accessible-notes.
+        //Guards: Requires current user id.
+        //Actions: Combines own notes + collaboration notes + public notes.
+        //Result: Aggregated accessible list.
         [HttpGet("accessible-notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetAccessibleNotes()
         {
@@ -105,7 +121,11 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
-        // GET: api/Notes/{guid}
+
+        //Trigger: GET note by api/Notes/guid(Globally Unique Identifier.
+        //Guards: Denies unless owner, public, or collaboration member.
+        //Actions: Loads note with related entities, computes role.
+        //Result: Note DTO + X-User-Role response header.
         [HttpGet("{guid}")]
         public async Task<ActionResult<NoteModel>> GetNote(string guid)
         {
@@ -175,7 +195,11 @@ namespace App.Server.Controllers
             return Ok(noteModel);
         }
 
-        // POST: api/Notes/create
+
+        //Trigger: POST api/Notes/create.
+        //Guards: Requires auth user; if collaborationId is set, user must be a member.
+        //Actions: Creates note with new guid and visibility flag.
+        //Result: 201 Created + note DTO.
         [HttpPost("create")]
         public async Task<ActionResult<NoteModel>> CreateNote(NoteModel noteModel)
         {
@@ -228,7 +252,11 @@ namespace App.Server.Controllers
             return CreatedAtAction(nameof(GetNote), new { guid = note.Guid }, createdNoteModel);
         }
 
-        // PUT: api/Notes/{guid}
+
+        //Trigger: PUT by  api/Notes/guid.
+        //Guards: Owner or collaboration owner/editor only.
+        //Actions: Updates title/content/visibility/timestamp; owner may change collaboration link.
+        //Result: Updated note DTO.
         [HttpPut("{guid}")]
         public async Task<ActionResult<NoteModel>> UpdateNote(string guid, NoteModel noteModel)
         {
@@ -299,7 +327,10 @@ namespace App.Server.Controllers
             return Ok(updatedNoteModel);
         }
 
-        // DELETE: api/Notes/{guid}
+        //Trigger: DELETE by  api/Notes/guid.
+        //Guards: Only owner can delete.
+        //Actions: Removes note.
+        //Result: 204 NoContent.
         [HttpDelete("{guid}")]
         public async Task<IActionResult> DeleteNote(string guid)
         {
@@ -327,7 +358,11 @@ namespace App.Server.Controllers
             return NoContent();
         }
 
-        // GET: api/Notes/public
+
+        //Trigger: GET  api/Notes/public.
+        //Guards: Auth required by controller.
+        //Actions: Returns only public notes with truncated preview content.
+        //Result: Public notes feed.
         [HttpGet("public")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetPublicNotes()
         {
@@ -352,7 +387,11 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
-        // GET: api/Notes/collaboration/{collaborationId}
+
+        //Trigger: GET api/Notes/collaboration/{id}.
+        //Guards: User must be member of collaboration.
+        //Actions: Reads all notes linked to collaboration.
+        //Result: Collaboration note list.
         [HttpGet("collaboration/{collaborationId}")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetCollaborationNotes(int collaborationId)
         {
@@ -391,7 +430,11 @@ namespace App.Server.Controllers
             return Ok(notes);
         }
 
-        // GET: api/Notes/my-collaborations-with-notes
+
+        //Trigger: GET api/Notes/my-collaborations-with-notes.
+        //Guards: Requires user id.
+        //Actions: Reads memberships + counts notes per collaboration.
+        //Result: Collaboration summaries for sidebar/list views.
         [HttpGet("my-collaborations-with-notes")]
         public async Task<ActionResult<IEnumerable<object>>> GetMyCollaborationsWithNotes()
         {
@@ -416,6 +459,10 @@ namespace App.Server.Controllers
             return Ok(collaborationsWithNotes);
         }
 
+        //Trigger: Internal helper for many endpoints.
+        //Guards: Returns null when unauthenticated or claim missing.
+        //Actions: Tries multiple claim names.
+        //Result: Nullable int user id.
         private int? GetCurrentUserId()
         {
             if (!User.Identity.IsAuthenticated)

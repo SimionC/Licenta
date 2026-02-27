@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import axios from 'axios';
 
+/**
+ * Purpose: assignment creation form scoped to a course.
+ * API touched: POST /api/Course/{courseId}/coursework.
+ * Output contract: onCreated callback updates parent list without re-fetch.
+ */
+
 export default function CreateCourseWorkForm({ courseId, onCreated }) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');

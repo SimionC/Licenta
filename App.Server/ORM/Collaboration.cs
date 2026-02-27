@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+/// Purpose: collaboration container entity for shared notes/member management.
+/// Key relations: UserId is creator/owner reference.
+
 namespace App.Server.ORM
 {
     public class Collaboration

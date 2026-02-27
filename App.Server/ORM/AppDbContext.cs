@@ -2,6 +2,10 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
+//Purpose: Central EF Core context declaring all DB sets (users, courses, notes, collaborations, permissions, submissions).
+//Inputs/Outputs: Receives DbContextOptions; gives controllers/services LINQ access to SQLite tables.
+//Depends on: Entity classes in App.Server/ORM, migrations in App.Server/Migrations.
+
 namespace App.Server.ORM;
 
 public partial class AppDbContext : DbContext

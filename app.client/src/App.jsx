@@ -18,7 +18,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import 'katex/dist/katex.min.css';       //npm install react-markdown remark-gfm remark-math rehype-katex katex
 import 'highlight.js/styles/github.css'; //npm install rehype-highlight highlight.js
 
+/**
+ * Purpose: Central route table and top-level auth bootstrap for userType/email.
+ * API touched: GET /api/Auth/Me (fetch + axios).
+ * State contract: userType drives role-based pages (teacher/student) and localStorage mirrors identity.
+ */
 
+// Runs once to hydrate identity from cookie session and persist basic profile.
 
 function App() {
 

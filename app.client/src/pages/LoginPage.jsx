@@ -5,6 +5,12 @@ import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import "../App.css";
 
+/**
+ * Purpose: Sign-in form and session bootstrap for dashboard access.
+ * API touched: POST /api/Auth/Login, GET /api/Auth/Me.
+ * Side effects: stores userEmail/userType in localStorage, then navigates to /dashboard.
+ */
+
 const LoginPage = () => {
     const navigate = useNavigate();
 
@@ -18,6 +24,7 @@ const LoginPage = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    // handleSubmit: validates login flow, hydrates profile, persists local identity cache.
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {

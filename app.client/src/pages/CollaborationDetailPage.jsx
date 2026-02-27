@@ -1,6 +1,12 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
+/**
+ * Purpose: Collaboration detail reader and note list navigator.
+ * API touched: GET /api/Collaborations/{collabId}.
+ * Output contract: renders collaboration metadata and links to collaboration-note editor route.
+ */
+
 export default function CollaborationDetailPage() {
     const { collabId } = useParams();
     const [collab, setCollab] = useState(null);

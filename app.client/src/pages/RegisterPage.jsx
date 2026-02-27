@@ -2,6 +2,12 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import "../App.css";
 
+/**
+ * Purpose: User registration form for student/teacher accounts.
+ * API touched: POST /api/Auth/Register with credentials.
+ * Input contract: form fields mirror backend RegisterModel naming.
+ */
+
 const RegisterPage = () => {
     const [formData, setFormData] = useState({
         email: '',
@@ -17,6 +23,7 @@ const RegisterPage = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    // handleSubmit: sends registration payload and surfaces success/failure to user.
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {

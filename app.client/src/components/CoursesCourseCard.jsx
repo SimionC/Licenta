@@ -3,6 +3,11 @@ import './CoursesCourseCard.css';
 import { BookOpen, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+/**
+ * Purpose: course card used in courses listing with route navigation.
+ * Contract: expects course.id and course.title; teacherName is optional display field.
+ */
+
 const CoursesCourseCard = ({ course }) => {
 
     const navigate = useNavigate();

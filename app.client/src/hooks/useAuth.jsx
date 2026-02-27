@@ -1,6 +1,12 @@
 // src/hooks/useAuth.js
 import { useState, useEffect } from 'react';
 
+/**
+ * Purpose: Minimal auth hook that verifies active session and exposes { user, loading }.
+ * API touched: GET /api/auth/me with credentials included.
+ * Output contract: user=null means unauthenticated; loading gates route rendering.
+ */
+
 export function useAuth() {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);

@@ -4,6 +4,12 @@ import CoursesCourseCard from '../components/CoursesCourseCard';
 import Sidebar from '../components/Sidebar';
 //import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
 
+/**
+ * Purpose: Course listing hub with role-specific behavior (student join vs teacher manage).
+ * API touched: /api/Course/student, /api/Course/teacher, /api/Course/create, /api/Course/delete/{id}, /api/Course/join.
+ * State contract: userType selects fetch branch and visible actions.
+ */
+
 const AllCoursesPage = ({ userType }) => {
     const [courses, setCourses] = useState([]);
     const [title, setTitle] = useState('');
@@ -96,7 +102,10 @@ const AllCoursesPage = ({ userType }) => {
 
     //}, []);
 
+    
+   
     useEffect(() => {
+    // useEffect(userType): fetches role-specific course list when identity resolves.
         if (userType === 'student') {
             // only fetch the student's registered courses
             fetch("/api/Course/student", { credentials: "include" })
@@ -115,6 +124,7 @@ const AllCoursesPage = ({ userType }) => {
         }
     }, [userType]);
 
+    // handleCreateCourse: teacher flow to create and append course locally.
     const handleCreateCourse = async (e) => {
         e.preventDefault();
 
@@ -140,6 +150,7 @@ const AllCoursesPage = ({ userType }) => {
         }
     };
 
+    // handleDeleteCourse: teacher cleanup flow with optimistic :) local removal.
     const handleDeleteCourse = async (id) => {
         if (!window.confirm("Are you sure you want to delete this course?")) return;
 
@@ -154,6 +165,7 @@ const AllCoursesPage = ({ userType }) => {
         }
     };
 
+    // handleJoinCourse: student flow to join by code and refresh registered list.
     const handleJoinCourse = async () => {
         const res = await fetch("/api/Course/join", {
             method: "POST",

@@ -13,6 +13,12 @@ import rehypeHighlight from 'rehype-highlight'
 import 'katex/dist/katex.min.css'
 import 'highlight.js/styles/github.css'
 
+/**
+ * Purpose: Collaboration creation wizard for collaborative note bootstrap.
+ * API touched: POST /api/Collaborations/create, then POST /api/Notes/create.
+ * Flow contract: two-step create is required to obtain collaborationId before note creation.
+ */
+
 const CreateCollaborationPage = () => {
     const navigate = useNavigate();
     const [noteTitle, setNoteTitle] = useState('');
@@ -21,6 +27,7 @@ const CreateCollaborationPage = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isPreview, setIsPreview] = useState(false);
 
+    // handleSave: validates title+members, creates collaboration first, then linked note, then redirects.
     const handleSave = async () => {
 
         if (!noteTitle.trim()) {

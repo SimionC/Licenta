@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 
+/**
+ * Purpose: reusable local form component for create/join course flows.
+ * API touched: POST /api/Course/join for student enrollment.
+ * Note: create path currently builds local object and delegates via onCreate callback.
+ */
+
 const CreateCourseForm = ({ onCreate }) => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');

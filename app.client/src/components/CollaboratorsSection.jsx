@@ -1,6 +1,12 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { Plus, X, UserPlus, Mail } from 'lucide-react';
 
+/**
+ * Purpose: Reusable collaborator management UI for create mode and edit-existing mode.
+ * API touched (edit mode): GET /api/Collaborations/{id}, POST /invite, PATCH/DELETE /members/{memberId}.
+ * Control contract: parentIsEditing is the single source of truth for mutating actions.
+ */
+
 export default function CollaboratorsSection({
     collaborators = [],
     setCollaborators,
@@ -19,6 +25,7 @@ export default function CollaboratorsSection({
     }, [parentIsEditing]);
 
     // helper to re-load from server when in edit mode
+    // refreshMembers: canonical re-sync from server after role/member mutations.
     const refreshMembers = async () => {
         if (!collaborationId) return;
         try {
@@ -34,6 +41,7 @@ export default function CollaboratorsSection({
         }
     };
 
+    // addCollaborator: local add in create mode OR invite endpoint in edit mode.
     const addCollaborator = async () => {
         // Only allow adding if parent allows editing
         if (!newEmail.trim() || !parentIsEditing) return; // Ensure parentIsEditing is true
@@ -85,6 +93,7 @@ export default function CollaboratorsSection({
         setShowAddForm(false);
     };
 
+    // removeCollaborator: local remove in create mode OR member delete endpoint in edit mode.
     const removeCollaborator = async (memberId) => {
         // Only allow removing if parent allows editing
         if (!parentIsEditing) return; // Ensure parentIsEditing is true
@@ -110,6 +119,7 @@ export default function CollaboratorsSection({
         }
     };
 
+    // updateCollaboratorRole: local role change in create mode OR member role endpoint in edit mode.
     const updateCollaboratorRole = async (memberId, role) => {
         // Only allow updating role if parent allows editing
         if (!parentIsEditing) return; // Ensure parentIsEditing is true
