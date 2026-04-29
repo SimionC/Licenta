@@ -168,7 +168,7 @@ namespace App.Server.Controllers
                 Id = collaboration.Id,
                 Name = collaboration.Name,
                 CreatedAt = collaboration.CreatedAt,
-                CreatedBy = User.Identity.Name,
+                CreatedBy = User.Identity?.Name ?? string.Empty,
                 MyRole = "owner",
                 MemberCount = model.MemberEmails.Count + 1
             };
@@ -341,12 +341,13 @@ namespace App.Server.Controllers
         //Result: Nullable int user id.
         private int? GetCurrentUserId()
         {
-            if (!User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated != true)
             {
                 return null;
             }
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ??
+            var userIdClaim = User.FindFirst("userId") ??
+                             User.FindFirst(ClaimTypes.NameIdentifier) ??
                              User.FindFirst("sub") ??
                              User.FindFirst("id") ??
                              User.FindFirst("UserId") ??

@@ -17,7 +17,7 @@ namespace App.Server.Controllers;
 [Route("api/[controller]/[action]")]
 public class AuthController : ControllerBase
 {
-    private AuthService _authService; 
+    private readonly AuthService _authService; 
 
     public AuthController(AuthService authService   )
     {
@@ -33,17 +33,10 @@ public class AuthController : ControllerBase
     {
         var result = _authService.Register(registerModel);
 
-        if (!result)
+        if (result == null)
             return BadRequest();
 
-        var claims = new List<Claim>
-        {
-            new Claim("Name", registerModel.Nume),
-            new Claim("LastName", registerModel.Prenume),
-            new Claim("Email", registerModel.Email),
-            new Claim("UserTypeId", registerModel.UserTypeId.ToString()),
-            new Claim("StudentId", registerModel.StudentId ?? string.Empty)
-        };
+        var claims = CreateClaims(result);
 
         var claimsIdentity = new ClaimsIdentity(
             claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -67,15 +60,7 @@ public class AuthController : ControllerBase
         if (result == null)
             return BadRequest();
 
-        var claims = new List<Claim>
-        {
-            new Claim("Name", result.Nume),
-            new Claim("LastName", result.Prenume),
-            new Claim("Email", result.Email),
-            new Claim("UserTypeId", result.UserTypeId.ToString()),
-            new Claim("StudentId", result.StudentId ?? string.Empty),
-            new Claim("userId", result.Id.ToString())
-        };
+        var claims = CreateClaims(result);
 
         var claimsIdentity = new ClaimsIdentity(
             claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -94,7 +79,7 @@ public class AuthController : ControllerBase
     //Result: Returns name/email/userType (teacher/student).
     public IActionResult Me()
     {
-        if (!User.Identity.IsAuthenticated)
+        if (User.Identity?.IsAuthenticated != true)
             return Unauthorized();
 
         var name = User.FindFirst("Name")?.Value;
@@ -107,6 +92,22 @@ public class AuthController : ControllerBase
             email,
             userType = userTypeId == "2" ? "teacher" : "student"
         });
+    }
+
+    private static List<Claim> CreateClaims(RegisterModel user)
+    {
+        return new List<Claim>
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Name, user.Nume),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim("Name", user.Nume),
+            new Claim("LastName", user.Prenume),
+            new Claim("Email", user.Email),
+            new Claim("UserTypeId", user.UserTypeId.ToString()),
+            new Claim("StudentId", user.StudentId ?? string.Empty),
+            new Claim("userId", user.Id.ToString())
+        };
     }
 
 

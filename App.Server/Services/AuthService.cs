@@ -1,8 +1,6 @@
 ﻿using App.Server.Models;
 using App.Server.ORM;
-using System.Runtime.Intrinsics.Arm;
-using System.Security.Cryptography;
-using System.Text;
+using Microsoft.AspNetCore.Identity;
 
 //Purpose: Registration/login business rules and credential checks.
 //Inputs/Outputs: Accepts register/login DTOs; writes user records and returns profile model on successful login.
@@ -12,6 +10,7 @@ namespace App.Server.Services;
 
 public class AuthService
 {
+    private static readonly PasswordHasher<User> PasswordHasher = new();
     private AppDbContext _dbContext;
 
     public AuthService(AppDbContext dbContext)
@@ -19,11 +18,11 @@ public class AuthService
         _dbContext = dbContext;
     }
     
-    public bool Register(RegisterModel registerModel)
+    public RegisterModel? Register(RegisterModel registerModel)
     {
         User? user = _dbContext.Users.Where(u => u.Email == registerModel.Email || u.StudentId == registerModel.StudentId).FirstOrDefault();
         if (user != null)
-            return false; 
+            return null; 
 
         user = new()
         {
@@ -31,14 +30,16 @@ public class AuthService
             Nume = registerModel.Nume,
             Prenume = registerModel.Prenume,
             StudentId = registerModel.StudentId,
-            Password = SHA256.HashData(Encoding.UTF8.GetBytes(registerModel.Password)).ToString(),
+            Password = string.Empty,
             UserTypeId = registerModel.UserTypeId
         };
+
+        user.Password = PasswordHasher.HashPassword(user, registerModel.Password);
 
         _dbContext.Add(user);
         _dbContext.SaveChanges();
 
-        return true;
+        return ToRegisterModel(user);
     }    
     
     public RegisterModel? Login(LoginModel loginModel)
@@ -48,19 +49,25 @@ public class AuthService
         if (user == null)
             return null;
 
-        string passwordHash = SHA256.HashData(Encoding.UTF8.GetBytes(loginModel.Password)).ToString();
+        var verificationResult = PasswordHasher.VerifyHashedPassword(user, user.Password, loginModel.Password);
 
-        if (passwordHash == user.Password)
-            return new RegisterModel()
-            {
-                Id = user.Id,
-                Email = user.Email,
-                Nume = user.Nume,
-                Prenume = user.Prenume, 
-                StudentId = user.StudentId,
-                UserTypeId = user.UserTypeId
-            };
+        if (verificationResult == PasswordVerificationResult.Success || verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
+            return ToRegisterModel(user);
 
         return null; 
+    }
+
+    private static RegisterModel ToRegisterModel(User user)
+    {
+        return new RegisterModel
+        {
+            Id = user.Id,
+            Email = user.Email,
+            Nume = user.Nume,
+            Prenume = user.Prenume,
+            Password = string.Empty,
+            StudentId = user.StudentId,
+            UserTypeId = user.UserTypeId
+        };
     }
 }

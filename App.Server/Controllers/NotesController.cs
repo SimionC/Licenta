@@ -33,9 +33,9 @@ namespace App.Server.Controllers
             var userId = GetCurrentUserId();
             return Ok(new
             {
-                IsAuthenticated = User.Identity.IsAuthenticated,
+                IsAuthenticated = User.Identity?.IsAuthenticated == true,
                 UserId = userId,
-                UserName = User.Identity.Name,
+                UserName = User.Identity?.Name,
                 Claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList()
             });
         }
@@ -144,7 +144,7 @@ namespace App.Server.Controllers
 
             // Check if user can access this note
             bool canAccess = false;
-            string userRole = null;
+            string? userRole = null;
 
             // Owner can always access
             if (note.UserId == currentUserId)
@@ -189,8 +189,7 @@ namespace App.Server.Controllers
                 Guid = note.Guid
             };
 
-            // You might want to add user role information to the response
-            Response.Headers.Add("X-User-Role", userRole);
+            Response.Headers["X-User-Role"] = userRole ?? string.Empty;
 
             return Ok(noteModel);
         }
@@ -465,12 +464,13 @@ namespace App.Server.Controllers
         //Result: Nullable int user id.
         private int? GetCurrentUserId()
         {
-            if (!User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated != true)
             {
                 return null;
             }
 
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier) ??
+            var userIdClaim = User.FindFirst("userId") ??
+                             User.FindFirst(ClaimTypes.NameIdentifier) ??
                              User.FindFirst("sub") ??
                              User.FindFirst("id") ??
                              User.FindFirst("UserId") ??
