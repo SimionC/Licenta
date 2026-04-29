@@ -1,7 +1,7 @@
-﻿import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+﻿import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import axios from 'axios';
+import { useAuth } from './hooks/useAuth';
 // Import components
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -27,33 +27,8 @@ import 'highlight.js/styles/github.css'; //npm install rehype-highlight highligh
 // Runs once to hydrate identity from cookie session and persist basic profile.
 
 function App() {
-
-    const [userType, setUserType] = useState("");
-
-    useEffect(() => {
-        fetch("/api/Auth/Me", { credentials: "include" })
-            .then((res) => {
-                if (!res.ok) throw new Error("Not logged in");
-                return res.json();
-            })
-            .then((data) => {
-                setUserType(data.userType); // "teacher" or "student"
-                console.log("Logged in as:", data.userType);
-            })
-            .catch(() => {
-                setUserType(""); // or redirect to login
-            });
-        axios.get("/api/Auth/Me", { withCredentials: true })
-            .then(res => {
-                localStorage.setItem("userEmail", res.data.email); // ✅ this is key
-                localStorage.setItem("userType", res.data.userType); // (optional)
-            })
-            .catch(() => {
-                localStorage.removeItem("userEmail"); // clear on failure
-            });
-    }, []);
-
-
+    const { user } = useAuth();
+    const userType = user?.userType || "";
 
     return (
         <Routes>
@@ -63,8 +38,7 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/courses/all" element={<AllCoursesPage userType={userType} />} />
             <Route path="/courses/:courseId" element={<CoursePage />} />
-            <Route path="/notes" element={<NotesPage />} />
-            <Route path="/notes/new" element={<NoteEditorPage />} />
+            {/* Notes - protected only (create/edit routes are protected below) */}
             {/*<Route path="/notes/:noteGuid" element={<NoteEditorPage />} />*/}
             {/*<Route path="/collaborations/new" element={<CreateCollaborationPage />} />*/}
             {/* protected note routes */}

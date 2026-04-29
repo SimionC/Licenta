@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -45,7 +45,10 @@ const LoginPage = () => {
                     localStorage.setItem("userEmail", me.email);
                     localStorage.setItem("userType", me.userType); // ✅ store userType
                 }
-                navigate('/dashboard');
+                // respect optional returnUrl
+                const params = new URLSearchParams(window.location.search);
+                const returnUrl = params.get('returnUrl');
+                navigate(returnUrl || '/dashboard');
             } else {
                 alert('Login failed');
             }
@@ -56,10 +59,18 @@ const LoginPage = () => {
     };
 
 
-    axios.get("/api/Auth/Me", { withCredentials: true })
-        .then(res => {
-            localStorage.setItem("userEmail", res.data.email); // ✅ store email for later
-        });
+    useEffect(() => {
+        let mounted = true;
+        axios.get("/api/Auth/Me", { withCredentials: true })
+            .then(res => {
+                if (!mounted) return;
+                localStorage.setItem("userEmail", res.data.email); // store email for later
+            })
+            .catch(() => {
+                // ignore; no active session
+            });
+        return () => { mounted = false };
+    }, []);
 
     return (
         <div className="container mt-5">

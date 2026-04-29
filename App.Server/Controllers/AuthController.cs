@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace App.Server.Controllers;
 
@@ -14,7 +15,7 @@ namespace App.Server.Controllers;
 //Depends on: App.Server/Services/AuthService.cs, cookie auth configured in App.Server/Program.cs.
 
 [ApiController]
-[Route("api/[controller]/[action]")]
+[Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly AuthService _authService; 
@@ -28,7 +29,8 @@ public class AuthController : ControllerBase
     //Guards: Rejects when AuthService says existing user.
     //Actions: Builds claims, signs in cookie principal.
     //Result: 200 OK + active session.
-    [HttpPost]
+    [AllowAnonymous]
+    [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterModel registerModel)
     {
         var result = _authService.Register(registerModel);
@@ -48,7 +50,8 @@ public class AuthController : ControllerBase
         return Ok();
     }    
     
-    [HttpPost]
+    [AllowAnonymous]
+    [HttpPost("login")]
     //Trigger: POST login.
     //Guards: Invalid credentials return bad request.
     //Actions: Builds claims including userId and role info, signs in.
@@ -72,7 +75,7 @@ public class AuthController : ControllerBase
         return Ok();
     }
 
-    [HttpGet]
+    [HttpGet("me")]
     //Trigger: GET current user.
     //Guards: Requires authenticated identity.
     //Actions: Reads claims Name/Email/UserTypeId.

@@ -20,7 +20,7 @@ export default function ProtectedRoute({ children }) {
         // not logged in → send to login, carry along returnUrl
         return (
             <Navigate
-                to={`/account/login?returnUrl=${encodeURIComponent(location.pathname)}`}
+                to={`/?returnUrl=${encodeURIComponent(location.pathname)}`}
                 replace
             />
         )
