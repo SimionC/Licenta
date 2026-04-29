@@ -12,9 +12,22 @@ export default function CollaborationDetailPage() {
     const [collab, setCollab] = useState(null);
 
     useEffect(() => {
-        fetch(`/api/Collaborations/${collabId}`, { credentials: 'include' })
-            .then(r => r.json())
-            .then(setCollab);
+        Promise.all([
+            fetch(`/api/Collaborations/${collabId}`, { credentials: 'include' }),
+            fetch(`/api/Notes/collaboration/${collabId}`, { credentials: 'include' })
+        ])
+            .then(async ([collabRes, notesRes]) => {
+                if (!collabRes.ok) throw new Error('Failed to load collaboration');
+
+                const collabData = await collabRes.json();
+                const notesData = notesRes.ok ? await notesRes.json() : [];
+
+                setCollab({
+                    ...collabData,
+                    notes: Array.isArray(notesData) ? notesData : []
+                });
+            })
+            .catch(() => setCollab(null));
     }, [collabId]);
 
     if (!collab) return <div>Loading…</div>;

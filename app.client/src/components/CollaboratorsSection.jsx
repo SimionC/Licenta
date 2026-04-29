@@ -135,7 +135,7 @@ export default function CollaboratorsSection({
                 const res = await fetch(
                     `/api/Collaborations/${collaborationId}/members/${memberId}`,
                     {
-                        method: 'PATCH',
+                        method: 'PUT',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ role })
