@@ -260,22 +260,33 @@ namespace App.Server.Controllers
 
         
         //Trigger: DELETE collaboration by api/Collaborations/{id}.
-        //Guards: Checks existence (note: no explicit ownership check here currently).
+        //Guards: Collaboration must exist; requester must be collaboration owner (UserId).
         //Actions: Removes collaboration members, then collaboration.
         //Result: 204 NoContent.
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCollaboration(int id)
         {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+            
             // 1️. find the collaboration
             var collab = await _context.Collaborations
                 .FirstOrDefaultAsync(c => c.Id == id);
             if (collab == null)
                 return NotFound();
-            // 2️. delete all member records for that collaboration
+            
+            // 2️. verify requester is the collaboration owner
+            if (collab.UserId != userId.Value)
+                return Forbid();
+            
+            // 3️. delete all member records for that collaboration
             var members = _context.CollaborationMembers
                 .Where(cm => cm.CollaborationId == id);
             _context.CollaborationMembers.RemoveRange(members);
-            // 3️. delete the collaboration itself
+            // 4️. delete the collaboration itself
             _context.Collaborations.Remove(collab);
             await _context.SaveChangesAsync();
             return NoContent();

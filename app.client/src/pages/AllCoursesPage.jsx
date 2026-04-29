@@ -114,7 +114,7 @@ const AllCoursesPage = ({ userType }) => {
                 .catch(err => console.error(err));
         } else if (userType === 'teacher') {
             // fetch only the courses this teacher created
-            fetch("/api/Course/teacher", { credentials: "include" })
+            fetch("/api/Course/all", { credentials: "include" })
                 .then(res => {
                     if (res.ok) return res.json();
                     throw new Error("Failed to fetch teacher's courses");

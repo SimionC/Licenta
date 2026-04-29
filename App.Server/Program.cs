@@ -2,6 +2,7 @@ using App.Server.ORM;
 using App.Server.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 //Purpose: App bootstrap (DI, EF Core SQLite, cookie auth, CORS, middleware pipeline, controller mapping).
 //Inputs/Outputs: Reads appsettings connection string and environment; exposes API endpoints and static SPA fallback.
@@ -10,7 +11,12 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    // Keep API payloads aligned with frontend camelCase access.
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

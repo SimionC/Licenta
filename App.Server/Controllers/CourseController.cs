@@ -1,6 +1,7 @@
 ﻿using App.Server.Models;
 using App.Server.ORM;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 //Purpose: Course lifecycle and coursework endpoints.
 //Inputs/Outputs: Uses body DTOs plus current user claims; returns course/coursework lists and created entities.
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CourseController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,7 +21,7 @@ public class CourseController : ControllerBase
 
 
     //Trigger: POST create.
-    //Guards: Validates title/description; requires Email claim.
+    //Guards: Validates title/description; requires Email claim; must be teacher (UserTypeId == "2").
     //Actions: Finds teacher user, generates join password, inserts course.
     //Result: Returns created course.
     [HttpPost("create")]
@@ -31,7 +33,12 @@ public class CourseController : ControllerBase
 
         // Save the email of the teacher (logged in user)
         var email = User.FindFirst("Email")?.Value;
+        var userTypeId = User.FindFirst("UserTypeId")?.Value;
         if (email == null) return Unauthorized();
+        
+        // Check if user is a teacher (UserTypeId == "2")
+        if (userTypeId != "2")
+            return Forbid();
 
         var user = _context.Users.FirstOrDefault(u => u.Email == email);
         if (user == null) return NotFound("User not found");
@@ -94,7 +101,7 @@ public class CourseController : ControllerBase
 
 
     //Trigger: DELETE course by id.
-    //Guards: Not found returns 404.
+    //Guards: Course must exist; requester must be course owner (TeacherId).
     //Actions: Removes course row.
     //Result: 204 NoContent.
     [HttpDelete("delete/{id}")]
@@ -102,6 +109,14 @@ public class CourseController : ControllerBase
     {
         var course = _context.Courses.Find(id);
         if (course == null) return NotFound();
+        
+        // Verify requester is the course owner (teacher)
+        var userIdStr = User.FindFirst("userId")?.Value;
+        if (userIdStr == null || !int.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+        
+        if (course.TeacherId != userId)
+            return Forbid();
 
         _context.Courses.Remove(course);
         _context.SaveChanges();
@@ -194,7 +209,7 @@ public class CourseController : ControllerBase
 
 
     //Trigger: POST courseId/createCoursework.
-    //Guards: Course must exist.
+    //Guards: Course must exist; requester must be course owner (TeacherId).
     //Actions: Creates coursework row linked to course.
     //Result: Created coursework payload.
     [HttpPost("{courseId}/coursework")]
@@ -203,6 +218,14 @@ public class CourseController : ControllerBase
         var course = _context.Courses.FirstOrDefault(c => c.Id == courseId);
         if (course == null)
             return NotFound();
+        
+        // Verify requester is the course owner (teacher)
+        var userIdStr = User.FindFirst("userId")?.Value;
+        if (userIdStr == null || !int.TryParse(userIdStr, out var userId))
+            return Unauthorized();
+        
+        if (course.TeacherId != userId)
+            return Forbid();
 
         var courseWork = new CourseWork
         {

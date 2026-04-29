@@ -12,7 +12,7 @@ export function useAuth() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/auth/me', { credentials: 'include' })
+        fetch('/api/Auth/Me', { credentials: 'include' })
             .then(res => {
                 if (!res.ok) throw new Error('Not logged in');
                 return res.json();
