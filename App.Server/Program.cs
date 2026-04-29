@@ -39,9 +39,16 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(
-                "https://localhost:5173", // Vite default
-                "https://localhost:59553", // Alternative frontend URL
-                "http://localhost:5173",   // HTTP versions
+                // Common dev frontend ports
+                "https://localhost:7167",
+                "http://localhost:7167",
+                // Backend (Kestrel) default when run via launch (https)
+                "https://localhost:7227",
+                "http://localhost:7227",
+                // legacy / alternate dev ports
+                "https://localhost:5173",
+                "http://localhost:5173",
+                "https://localhost:59553",
                 "http://localhost:59553"
               )
               .AllowAnyHeader()
