@@ -1,10 +1,10 @@
 .course-description-box {
     background-color: #ffffff;
-    border-radius: 16px;
+    border-radius: 8px;
     padding: 24px;
     margin-top: 24px;
     box-shadow: 0 0 0 1px #f5f9ed;
-    width: 1400px;
+    width: 100%;
 }
 
 .course-description-header {

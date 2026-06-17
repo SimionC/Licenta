@@ -1,47 +1,31 @@
-﻿import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import React from 'react';
-import { ArrowLeft, Code, Upload, Plus } from 'lucide-react';
+import { ArrowLeft, Code, Lock, Pencil, Plus, RotateCcw, Save, Unlock, Upload } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import CourseDescriptionBox from '../components/CourseDescriptionBox';
 import ResourceCard from '../components/ResourceCard';
-import CreateCourseWorkForm from '../components/CreateCourseWorkForm';
 import CourseAssignmentBox from '../components/CourseAssignmentBox';
 import './CoursePage.css';
-//import axios from 'axios';
 
 /**
- * Purpose: Single-course view (description, resources tab, assignments tab).
- * API touched: GET /api/Course/{courseId}, GET/POST /api/Course/{courseId}/courseworks.
- * UI contract: teacher-only actions (join code visibility and assignment creation).
+ * Purpose: Single-course view with role-aware management.
+ * API touched: course detail, resources upload/download/delete, close/reopen, edit, coursework list/create.
+ * UI contract: teacher owners manage; enrolled students consume resources and assignments.
  */
 
-const mockResources = [
-    {
-        title: 'Financial Ratios Cheat Sheet',
-        type: 'PDF',
-        size: '2.3 MB',
-        uploadedAt: '1/10/2024',
-    },
-    {
-        title: 'Week 1 Lecture Notes',
-        type: 'DOC',
-        size: '1.8 MB',
-        uploadedAt: '1/8/2024',
-    },
-    {
-        title: 'Excel Templates',
-        type: 'ZIP',
-        size: '5.2 MB',
-        uploadedAt: '1/5/2024',
-    },
-    {
-        title: 'Extra Practice Problems',
-        type: 'TXT',
-        size: '0.9 MB',
-        uploadedAt: '1/4/2024',
-    },
-];
+const formatBytes = (bytes = 0) => {
+    if (!bytes) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+    const value = bytes / Math.pow(1024, index);
+    return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const formatDate = (value) => {
+    if (!value) return 'No date';
+    return new Date(value).toLocaleDateString();
+};
 
 const CoursePage = () => {
     const { courseId } = useParams();
@@ -49,129 +33,306 @@ const CoursePage = () => {
     const [course, setCourse] = useState(null);
     const [activeTab, setActiveTab] = useState('resources');
     const [courseWorks, setCourseWorks] = useState([]);
-    const [showForm, setShowForm] = useState(false);
+    const [resources, setResources] = useState([]);
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editValues, setEditValues] = useState({ title: '', description: '' });
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [message, setMessage] = useState('');
 
-    // useEffect(courseId): loads course metadata + assignment list.
+    const loadCourseData = async () => {
+        setMessage('');
+        try {
+            const [courseRes, resourcesRes, worksRes] = await Promise.all([
+                fetch(`/api/Course/${courseId}`, { credentials: 'include' }),
+                fetch(`/api/Course/${courseId}/resources`, { credentials: 'include' }),
+                fetch(`/api/Course/${courseId}/courseworks`, { credentials: 'include' })
+            ]);
+
+            if (!courseRes.ok) throw new Error('Could not load course');
+            const courseData = await courseRes.json();
+            setCourse(courseData);
+            setEditValues({ title: courseData.title, description: courseData.description });
+
+            if (resourcesRes.ok) setResources(await resourcesRes.json());
+            if (worksRes.ok) setCourseWorks(await worksRes.json());
+        } catch (err) {
+            console.error(err);
+            setMessage('Could not load this course. Make sure you are enrolled or own it.');
+        }
+    };
+
     useEffect(() => {
-        // 1) fetch the course metadata
-        fetch(`/api/Course/${courseId}`)
-            .then(r => r.json())
-            .then(setCourse)
-            .catch(err => console.error("Error loading course", err));
-
-        // 2) fetch all the existing assignments
-        fetch(`/api/Course/${courseId}/courseworks`)
-            .then(r => {
-                if (!r.ok) throw new Error("Could not load assignments");
-                return r.json();
-            })
-            .then(setCourseWorks)
-            .catch(err => console.error("Error loading assignments", err));
+        loadCourseData();
     }, [courseId]);
 
+    const handleSaveCourse = async (e) => {
+        e.preventDefault();
+        const res = await fetch(`/api/Course/${courseId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(editValues)
+        });
+
+        if (!res.ok) {
+            setMessage('Failed to update course details.');
+            return;
+        }
+
+        const updated = await res.json();
+        setCourse(updated);
+        setIsEditing(false);
+        setMessage('Course details updated.');
+    };
+
+    const handleToggleClosed = async () => {
+        const action = course.isClosed ? 'reopen' : 'close';
+        const res = await fetch(`/api/Course/${courseId}/${action}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (!res.ok) {
+            setMessage(`Failed to ${action} course.`);
+            return;
+        }
+
+        setCourse(await res.json());
+    };
+
+    const handleUploadResource = async (e) => {
+        e.preventDefault();
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const res = await fetch(`/api/Course/${courseId}/resources`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (!res.ok) {
+            setMessage('Resource upload failed.');
+            return;
+        }
+
+        const resource = await res.json();
+        setResources(prev => [resource, ...prev]);
+        setSelectedFile(null);
+        e.target.reset();
+        setMessage('Resource uploaded.');
+    };
+
+    const handleDeleteResource = async (resourceId) => {
+        if (!window.confirm('Remove this resource from the course?')) return;
+
+        const res = await fetch(`/api/Course/resources/${resourceId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (res.ok) {
+            setResources(prev => prev.filter(resource => resource.id !== resourceId));
+        } else {
+            setMessage('Failed to remove resource.');
+        }
+    };
+
+    const handleCreateAssignment = async (e) => {
+        e.preventDefault();
+        const title = e.target.title.value;
+        const description = e.target.description.value;
+        const deadline = e.target.deadline.value;
+
+        const res = await fetch(`/api/Course/${courseId}/coursework`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ title, description, deadline })
+        });
+
+        if (res.ok) {
+            const cw = await res.json();
+            setCourseWorks(prev => [...prev, cw]);
+            setShowAssignModal(false);
+        } else {
+            setMessage('Failed to create assignment.');
+        }
+    };
+
+    if (message && !course) {
+        return (
+            <div className="course-page-container">
+                <Sidebar />
+                <div className="course-page">
+                    <button className="back-btn" onClick={() => navigate(-1)}>
+                        <ArrowLeft size={20} />
+                    </button>
+                    <div className="course-empty-state">{message}</div>
+                </div>
+            </div>
+        );
+    }
+
     if (!course) return <div className="text-center mt-5">Loading course...</div>;
+
+    const canManage = course.canManage;
 
     return (
         <div className="course-page-container">
             <Sidebar />
             <div className="course-page">
-                {/* Course Header */}
                 <div className="course-header">
                     <div className="course-header-left">
                         <button className="back-btn" onClick={() => navigate(-1)}>
                             <ArrowLeft size={20} />
                         </button>
-                        <h1 className="course-title">{course.title}</h1>
+                        <div>
+                            <div className="course-title-row">
+                                <h1 className="course-title">{course.title}</h1>
+                                <span className={`course-status ${course.isClosed ? 'course-status--closed' : 'course-status--open'}`}>
+                                    {course.isClosed ? 'Closed' : 'Open'}
+                                </span>
+                            </div>
+                            <p className="course-teacher">Teacher: {course.teacherName}</p>
+                        </div>
                     </div>
-                    {localStorage.getItem('userType') === 'teacher' && (
-                        <div className="course-join-code">
-                            <Code size={16} style={{ marginRight: '6px' }} />
-                            Join Code: <strong>{course.joinPassword}</strong>
+
+                    {canManage && (
+                        <div className="course-actions">
+                            <div className="course-join-code">
+                                <Code size={16} />
+                                Join Code: <strong>{course.joinPassword}</strong>
+                            </div>
+                            <button className="secondary-action-btn" onClick={() => setIsEditing(true)}>
+                                <Pencil size={16} />
+                                Edit
+                            </button>
+                            <button className="secondary-action-btn" onClick={handleToggleClosed}>
+                                {course.isClosed ? <Unlock size={16} /> : <Lock size={16} />}
+                                {course.isClosed ? 'Reopen' : 'Close'}
+                            </button>
                         </div>
                     )}
                 </div>
 
-                {/* description */}
-                <CourseDescriptionBox description={course.description} />
+                {message && <div className="course-message">{message}</div>}
 
-                {/* tabs + action button */}
+                {isEditing ? (
+                    <form className="course-edit-box" onSubmit={handleSaveCourse}>
+                        <label>
+                            Course title
+                            <input
+                                value={editValues.title}
+                                onChange={(e) => setEditValues(prev => ({ ...prev, title: e.target.value }))}
+                                required
+                            />
+                        </label>
+                        <label>
+                            Description
+                            <textarea
+                                value={editValues.description}
+                                onChange={(e) => setEditValues(prev => ({ ...prev, description: e.target.value }))}
+                                required
+                            />
+                        </label>
+                        <div className="course-edit-actions">
+                            <button type="button" className="btn-cancel" onClick={() => setIsEditing(false)}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="btn-confirm">
+                                <Save size={16} />
+                                Save
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <CourseDescriptionBox description={course.description} />
+                )}
+
                 <div className="tabs-actions">
                     <div className="course-tabs">
                         <button
                             className={activeTab === 'resources' ? 'tab active' : 'tab'}
-                            onClick={() => { setActiveTab('resources'); setShowForm(false); }}
+                            onClick={() => setActiveTab('resources')}
                         >
                             Resources
                         </button>
                         <button
                             className={activeTab === 'assignments' ? 'tab active' : 'tab'}
-                            onClick={() => { setActiveTab('assignments'); setShowForm(false); }}
+                            onClick={() => setActiveTab('assignments')}
                         >
                             Assignments
                         </button>
                     </div>
-                    {activeTab === 'resources' && localStorage.getItem('userType') === 'teacher' && (
-                        <button
-                            className="upload-btn"
-                            onClick={() => {/* open your upload form/modal here */ }}
-                        >
-                            <Upload size={18} style={{ marginRight: 8 }} />
-                            Upload Resource
-                        </button>
-                    )}
-                    {activeTab === 'assignments' && localStorage.getItem('userType') === 'teacher' && (
-                        <button
-                            className="upload-btn"
-                            onClick={() => setShowAssignModal(true)}
-                        >
-                            <Plus size={18} style={{ marginRight: 8 }} />
+                    {activeTab === 'assignments' && canManage && (
+                        <button className="upload-btn" onClick={() => setShowAssignModal(true)}>
+                            <Plus size={18} />
                             Create Assignment
                         </button>
                     )}
                 </div>
 
-                {/* resources grid */}
                 {activeTab === 'resources' && (
-                    <div className="resource-grid">
-                        {mockResources.map((r, i) => (
-                            <ResourceCard
-                                key={i}
-                                title={r.title}
-                                type={r.type}
-                                size={r.size}
-                                uploadedAt={r.uploadedAt}
-                            />
-                        ))}
-                    </div>
-                )}
-
-                {/* assignments list + form */}
-                {activeTab === 'assignments' && (
                     <>
-                        {showForm && (
-                            <CreateCourseWorkForm
-                                courseId={courseId}
-                                onCreated={cw => {
-                                    setCourseWorks(prev => [cw, ...prev]);
-                                    setShowForm(false);
-                                }}
-                            />
+                        {canManage && (
+                            <form className="resource-upload-box" onSubmit={handleUploadResource}>
+                                <label>
+                                    Upload course resource
+                                    <input type="file" onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)} />
+                                </label>
+                                <button type="submit" className="upload-btn" disabled={!selectedFile}>
+                                    <Upload size={18} />
+                                    Upload Resource
+                                </button>
+                            </form>
                         )}
 
-                        <div className="resource-grid">
-                            {courseWorks.map(cw => (
+                        {resources.length === 0 ? (
+                            <div className="course-empty-state">No resources have been added yet.</div>
+                        ) : (
+                            <div className="resource-grid">
+                                {resources.map(resource => (
+                                    <ResourceCard
+                                        key={resource.id}
+                                        title={resource.title}
+                                        type={resource.type || 'FILE'}
+                                        size={formatBytes(resource.size)}
+                                        uploadedAt={formatDate(resource.uploadedAt)}
+                                        canManage={canManage}
+                                        onDownload={() => {
+                                            window.location.href = `/api/Course/resources/${resource.id}/download`;
+                                        }}
+                                        onDelete={() => handleDeleteResource(resource.id)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {activeTab === 'assignments' && (
+                    <div className="resource-grid">
+                        {courseWorks.length === 0 ? (
+                            <div className="course-empty-state">No assignments yet.</div>
+                        ) : (
+                            courseWorks.map(cw => (
                                 <CourseAssignmentBox
                                     key={cw.id}
                                     title={cw.title}
                                     description={cw.description}
-                                    deadline={cw.deadline}
+                                    deadline={formatDate(cw.deadline)}
+                                    status={course.isClosed ? 'completed' : 'pending'}
+                                    actionLabel={!canManage ? 'Answer Assignment' : undefined}
+                                    onAction={() => setMessage('Assignment answering will be implemented in the assignments module.')}
                                 />
-                            ))}
-                        </div>
-                    </>
+                            ))
+                        )}
+                    </div>
                 )}
-
             </div>
 
             {showAssignModal && (
@@ -179,28 +340,9 @@ const CoursePage = () => {
                     <div className="modal-content">
                         <div className="modal-header">
                             <h3>Create Assignment</h3>
-                            <button className="modal-close" onClick={() => setShowAssignModal(false)}>×</button>
+                            <button className="modal-close" onClick={() => setShowAssignModal(false)}>x</button>
                         </div>
-                        <form onSubmit={async e => {
-                            e.preventDefault();
-                            // grab form values
-                            const title = e.target.title.value;
-                            const description = e.target.description.value;
-                            const deadline = e.target.deadline.value;
-                            // post to backend
-                            const res = await fetch(`/api/Course/${courseId}/coursework`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ title, description, deadline })
-                            });
-                            if (res.ok) {
-                                const cw = await res.json();
-                                setCourseWorks(prev => [...prev, cw]);
-                                setShowAssignModal(false);
-                            } else {
-                                alert('Failed to create assignment');
-                            }
-                        }}>
+                        <form onSubmit={handleCreateAssignment}>
                             <div className="form-group">
                                 <label>Assignment Title</label>
                                 <input name="title" type="text" required placeholder="Enter assignment title" />
@@ -225,69 +367,8 @@ const CoursePage = () => {
                     </div>
                 </div>
             )}
-
-
         </div>
     );
 };
 
 export default CoursePage;
-
-
-//export default function CoursePage() {
-//    const { courseId } = useParams();
-//    const [course, setCourse] = useState(null);
-//    const [courseWorks, setCourseWorks] = useState([]);
-
-//    useEffect(() => {
-//        // Get course info
-//        axios.get(`/api/Course/${courseId}`)
-//            .then(res => setCourse(res.data))
-//            .catch(err => console.error("Error loading course", err));
-
-//        // Save courseId to local storage
-//        const userEmail = localStorage.getItem("userEmail"); // Or another identifier you're already storing
-//        if (!userEmail) return;
-//        const key = `recentCourses_${userEmail}`;
-//        const existing = JSON.parse(localStorage.getItem(key) || '[]');
-//        const updated = [courseId, ...existing.filter(id => id !== courseId)].slice(0, 5);
-//        localStorage.setItem(key, JSON.stringify(updated));
-
-//        // Get assignments
-//        axios.get(`/api/Course/${courseId}/courseworks`)
-//            .then(res => setCourseWorks(res.data))
-//            .catch(err => console.error("Error loading courseworks", err));
-
-//    }, [courseId]);
-
-//    if (!course) return <div className="text-center mt-5">Loading course...</div>;
-
-//    return (
-//        <div className="container mt-4">
-//            <h2 className="mb-4">📘 {course.title}</h2>
-
-//            {/* Assignment creation form */}
-//            {localStorage.getItem("userType") === "teacher" && (
-//                <CreateCourseWorkForm courseId={courseId} onCreated={(cw) =>
-//                    setCourseWorks(prev => [...prev, cw])
-//                } />
-//            )}
-
-//            {/* Assignment list */}
-//            <h4 className="mt-5">Assignments</h4>
-//            {courseWorks.length === 0 ? (
-//                <p className="text-muted">No assignments yet.</p>
-//            ) : (
-//                <ul className="list-group">
-//                    {courseWorks.map((cw) => (
-//                        <li key={cw.id} className="list-group-item">
-//                            <strong>{cw.title}</strong><br />
-//                            <small>{cw.description}</small><br />
-//                            <small className="text-muted">📅 Deadline: {cw.deadline?.split('T')[0]}</small>
-//                        </li>
-//                    ))}
-//                </ul>
-//            )}
-//        </div>
-//    );
-//}

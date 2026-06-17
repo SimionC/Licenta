@@ -18,7 +18,10 @@ const CoursesCourseCard = ({ course }) => {
                 <BookOpen size={40} color="white" />
             </div>
             <div className="courses-card-body">
-                <h5 className="courses-card-title">{course.title}</h5>
+                <div className="courses-card-title-row">
+                    <h5 className="courses-card-title">{course.title}</h5>
+                    {course.isClosed && <span className="courses-card-status">Closed</span>}
+                </div>
                 <p className="courses-card-teacher">{course.teacherName}</p>
                 <button className="courses-card-btn"
                     onClick={() => navigate(`/courses/${course.id}`)}>

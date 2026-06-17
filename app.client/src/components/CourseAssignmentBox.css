@@ -1,13 +1,13 @@
 .course-assignment-box {
     background: #fff;
     border: 1px solid #e9f4e5;
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 20px;
     gap: 40px;
     margin: 1rem auto;
     max-width: 1400px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-    width: 675px;
+    width: 100%;
     
 }
 
@@ -42,6 +42,8 @@
 
 .cab-meta {
     display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 1.5rem;
     font-size: 0.9rem;
     color: #4b5563;
@@ -55,4 +57,18 @@
 .cab-meta-icon {
     margin-right: 0.4rem;
     color: #118b50;
+}
+
+.cab-action {
+    background: #5db996;
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cab-action:hover {
+    background: #118b50;
 }

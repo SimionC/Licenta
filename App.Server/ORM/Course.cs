@@ -23,6 +23,8 @@ namespace App.Server.ORM
         
         public string JoinPassword { get; set; } = string.Empty;
 
+        public bool IsClosed { get; set; }
+
         // Foreign key
         [ForeignKey("TeacherId")]
         public virtual User Teacher { get; set; } = null!;

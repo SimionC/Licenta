@@ -145,6 +145,7 @@ const AllCoursesPage = ({ userType }) => {
             setCourses([...courses, added]);
             setTitle('');
             setDescription('');
+            setShowCreateModal(false);
         } else {
             alert("Failed to create course");
         }
@@ -252,26 +253,32 @@ const AllCoursesPage = ({ userType }) => {
                             {/* Student view */}
                             {userType === 'student' && (
                                 <div className="courses-grid">
-                                    {registeredCourses.map(course => (
-                                        <CoursesCourseCard key={course.id} course={course} />
-                                    ))}
+                                    {registeredCourses.length === 0
+                                        ? <p>No enrolled courses yet. Use the join code from your teacher.</p>
+                                        : registeredCourses.map(course => (
+                                            <CoursesCourseCard key={course.id} course={course} />
+                                        ))}
                                 </div>
                             )}
 
                             {/*course list*/}
-                            <div className="courses-grid">
-                                {courses.map(course => (
-                                    <div key={course.id}>
-                                        <CoursesCourseCard course={course} />
-                                        <button
-                                            className="btn btn-danger btn-sm mt-2"
-                                            onClick={() => handleDeleteCourse(course.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
+                            {userType === 'teacher' && (
+                                <div className="courses-grid">
+                                    {courses.length === 0
+                                        ? <p>No courses created yet.</p>
+                                        : courses.map(course => (
+                                            <div key={course.id}>
+                                                <CoursesCourseCard course={course} />
+                                                <button
+                                                    className="btn btn-danger btn-sm mt-2"
+                                                    onClick={() => handleDeleteCourse(course.id)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

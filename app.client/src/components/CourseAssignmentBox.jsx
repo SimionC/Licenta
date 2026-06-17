@@ -1,14 +1,14 @@
 ﻿// src/components/CourseAssignmentBox.jsx
 import React from 'react';
 import './CourseAssignmentBox.css';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 
 /**
  * Purpose: presentational assignment summary card.
  * Contract: status controls visual badge class; no API side effects.
  */
 
-const CourseAssignmentBox = ({ title, description, deadline, status }) => {
+const CourseAssignmentBox = ({ title, description, deadline, status = 'pending', actionLabel, onAction }) => {
     return (
         <div className="course-assignment-box">
             <div className="cab-header">
@@ -21,7 +21,11 @@ const CourseAssignmentBox = ({ title, description, deadline, status }) => {
                     <Calendar size={16} className="cab-meta-icon" />
                     Due: {deadline}
                 </div>
-              
+                {actionLabel && (
+                    <button className="cab-action" onClick={onAction}>
+                        {actionLabel}
+                    </button>
+                )}
             </div>
         </div>
     );

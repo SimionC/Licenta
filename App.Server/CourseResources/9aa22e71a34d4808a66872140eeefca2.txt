@@ -1,0 +1,74 @@
+import java.io.*;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Client {
+
+    private static List<SensorReading> list = new ArrayList<>();
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        /// read file
+        BufferedReader br = new BufferedReader(new FileReader("file.txt"));
+        String line;
+        while((line = br.readLine()) != null){
+            String[] data = line.split(",");
+            int id = Integer.parseInt(data[0].trim());
+            String location = data[1].trim();
+            String type = data[2].trim();
+            double value = Double.parseDouble(data[3].trim());
+
+            SensorReading s = new SensorReading(id, location, type, value);
+            list.add(s);
+        }
+        //System.out.println(list.size());
+        //list.forEach(System.out::println);
+
+
+        ///UDP
+
+        /// the message
+        String size = String.valueOf(list.size());
+        byte[] data1 = size.getBytes();
+        DatagramSocket socket1 = new DatagramSocket();
+        DatagramPacket packet1 = new DatagramPacket(data1, data1.length, InetAddress.getByName("localhost"), 8888);
+        socket1.send(packet1);
+        //System.out.println("Done");
+
+        /// the object
+        Thread t = new Thread(()-> {
+            DatagramSocket socket = null; //
+            ObjectOutputStream oos = null;
+            for (SensorReading s : list) {
+
+                try{
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    oos = new ObjectOutputStream(bos);
+                    oos.writeObject(s);
+                    byte[] data = bos.toByteArray();
+                    socket = new DatagramSocket();
+                    DatagramPacket packet = new DatagramPacket(data, data.length, InetAddress.getByName("localhost"), 8888);
+                    socket.send(packet);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            try {
+                oos.close();
+                oos.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            socket.close();
+            System.out.println("OBJECT");
+
+        });
+        t.start();
+        t.join();
+
+        socket1.close();
+
+
+    }
+}

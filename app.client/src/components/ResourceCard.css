@@ -2,17 +2,16 @@
 
 .resource-card {
     background-color: white;
-    border-radius: 16px;
+    border-radius: 8px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
     gap: 20px;
     padding: 20px;
-    margin: 10px;
-    width: calc(50% - 20px);
     display: flex;
     justify-content: space-between;
     align-items: center;
     transition: box-shadow 0.3s ease;
-    width: 675px;
+    width: 100%;
+    min-width: 0;
 }
 
     .resource-card:hover {
@@ -38,6 +37,7 @@
 .resource-info {
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .resource-title {
@@ -54,24 +54,57 @@
     margin-top: 4px;
 }
 
+.resource-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 .resource-download-btn {
     background: white;
     border: 1px solid #d1d5db;
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 10px 20px;
     font-weight: 500;
     color: #111827;
     cursor: pointer;
     transition: background 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
     .resource-download-btn:hover {
         background-color: #f9fafb;
     }
 
+.resource-delete-btn {
+    border: 1px solid #fecaca;
+    background: #fff;
+    color: #b91c1c;
+    border-radius: 8px;
+    width: 42px;
+    height: 42px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.resource-delete-btn:hover {
+    background: #fff1f2;
+}
+
 .resource-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
     margin-top: 20px;
+}
+
+@media (max-width: 1000px) {
+    .resource-grid {
+        grid-template-columns: 1fr;
+    }
 }

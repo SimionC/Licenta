@@ -1,9 +1,9 @@
 // src/components/ResourceCard.jsx
 import React from 'react';
 import './ResourceCard.css';
-import { FileText } from 'lucide-react';
+import { Download, FileText, Trash2 } from 'lucide-react';
 
-const ResourceCard = ({ title, type, size, uploadedAt }) => {
+const ResourceCard = ({ title, type, size, uploadedAt, canManage, onDownload, onDelete }) => {
     return (
         <div className="resource-card">
             <div className="resource-left">
@@ -17,7 +17,17 @@ const ResourceCard = ({ title, type, size, uploadedAt }) => {
                     </p>
                 </div>
             </div>
-            <button className="resource-download-btn">Download</button>
+            <div className="resource-actions">
+                <button className="resource-download-btn" onClick={onDownload}>
+                    <Download size={16} />
+                    Download
+                </button>
+                {canManage && (
+                    <button className="resource-delete-btn" onClick={onDelete} title="Remove resource">
+                        <Trash2 size={16} />
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
