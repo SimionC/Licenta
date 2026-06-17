@@ -13,5 +13,7 @@ public partial class Grade
 
     public string? Description { get; set; }
 
-    public int GivenGrade { get; set; }
+    public decimal GivenGrade { get; set; }
+
+    public DateTime GradedAt { get; set; }
 }

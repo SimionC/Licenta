@@ -269,6 +269,30 @@
     gap: 8px;
 }
 
+.btn-danger-confirm {
+    background: #dc2626;
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-danger-confirm:hover {
+    background: #b91c1c;
+}
+
+.confirm-modal {
+    max-width: 440px;
+}
+
+.confirm-modal-text {
+    color: #4b5563;
+    line-height: 1.5;
+    margin: 0;
+}
+
 .course-edit-box,
 .resource-upload-box,
 .course-empty-state,
@@ -321,6 +345,162 @@
     flex-wrap: wrap;
 }
 
+.assignment-list,
+.grades-panel {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.assignment-panel {
+    display: grid;
+    gap: 14px;
+}
+
+.assignment-files,
+.assignment-toolbar,
+.support-upload-form,
+.submission-form,
+.grade-form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.submission-form {
+    align-items: stretch;
+}
+
+.submission-form textarea {
+    min-height: 90px;
+    min-width: min(100%, 420px);
+    flex: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.submission-form input,
+.support-upload-form input,
+.grade-form input {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 9px 10px;
+}
+
+.grade-saved-indicator {
+    color: #15803d;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 800;
+}
+
+.file-link-btn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #111827;
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.file-link-btn:hover {
+    background: #f9fafb;
+}
+
+.grade-note,
+.final-grade-box {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.deadline-reached-state {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: #7f1d1d;
+}
+
+.deadline-reached-btn {
+    background: #dc2626;
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-weight: 700;
+    cursor: not-allowed;
+    opacity: 0.85;
+}
+
+.submissions-list {
+    display: grid;
+    gap: 12px;
+}
+
+.submission-row,
+.grade-row,
+.student-grade-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 14px;
+}
+
+.submission-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) 1fr;
+    gap: 16px;
+}
+
+.submission-row p,
+.grade-row p {
+    color: #64748b;
+    margin: 4px 0;
+}
+
+.submission-detail {
+    display: grid;
+    gap: 10px;
+}
+
+.missing-submission {
+    color: #b91c1c;
+    font-weight: 700;
+}
+
+.student-grade-card summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.grade-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.grade-value {
+    min-width: 64px;
+    display: flex;
+    justify-content: center;
+    color: #18230f;
+    font-weight: 800;
+}
+
 .course-empty-state {
     color: #64748b;
 }
@@ -342,5 +522,9 @@
 
     .course-actions {
         justify-content: flex-start;
+    }
+
+    .submission-row {
+        grid-template-columns: 1fr;
     }
 }

@@ -39,6 +39,7 @@ public partial class AppDbContext : DbContext
     public DbSet<CourseNote> CoursesNotes { get; set; } = null!;
     public DbSet<CourseResource> CourseResources { get; set; } = null!;
     public DbSet<CourseWork> CourseWork { get; set; } = null!;
+    public DbSet<CourseWorkResource> CourseWorkResources { get; set; } = null!;
     public DbSet<Grade> Grades { get; set; } = null!;
     public DbSet<Note> Notes { get; set; } = null!;
     public DbSet<NotePermission> NotePermissions { get; set; } = null!;

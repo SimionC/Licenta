@@ -8,7 +8,16 @@ import { Calendar } from 'lucide-react';
  * Contract: status controls visual badge class; no API side effects.
  */
 
-const CourseAssignmentBox = ({ title, description, deadline, status = 'pending', actionLabel, onAction }) => {
+const CourseAssignmentBox = ({
+    title,
+    description,
+    deadline,
+    weightPercent,
+    status = 'pending',
+    actionLabel,
+    onAction,
+    children
+}) => {
     return (
         <div className="course-assignment-box">
             <div className="cab-header">
@@ -21,12 +30,16 @@ const CourseAssignmentBox = ({ title, description, deadline, status = 'pending',
                     <Calendar size={16} className="cab-meta-icon" />
                     Due: {deadline}
                 </div>
+                {weightPercent !== undefined && (
+                    <span className="cab-weight">{weightPercent}% of final grade</span>
+                )}
                 {actionLabel && (
                     <button className="cab-action" onClick={onAction}>
                         {actionLabel}
                     </button>
                 )}
             </div>
+            {children && <div className="cab-extra">{children}</div>}
         </div>
     );
 };

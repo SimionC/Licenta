@@ -8,6 +8,7 @@ namespace App.Server.Models
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
         public DateTime? Deadline { get; set; }
+        public decimal WeightPercent { get; set; }
     }
 
 }

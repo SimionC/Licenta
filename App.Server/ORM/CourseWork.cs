@@ -20,6 +20,8 @@ public partial class CourseWork
 
     public DateTime? Deadline { get; set; }
 
+    public decimal WeightPercent { get; set; }
+
     // Foreign keys
     [ForeignKey("CourseId")]
     public Course Course { get; set; } = null!;

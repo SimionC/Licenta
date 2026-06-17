@@ -1,7 +1,19 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import React from 'react';
-import { ArrowLeft, Code, Lock, Pencil, Plus, RotateCcw, Save, Unlock, Upload } from 'lucide-react';
+import {
+    ArrowLeft,
+    Code,
+    Download,
+    Flag,
+    CheckCircle,
+    Lock,
+    Pencil,
+    Plus,
+    Save,
+    Unlock,
+    Upload
+} from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import CourseDescriptionBox from '../components/CourseDescriptionBox';
 import ResourceCard from '../components/ResourceCard';
@@ -9,9 +21,8 @@ import CourseAssignmentBox from '../components/CourseAssignmentBox';
 import './CoursePage.css';
 
 /**
- * Purpose: Single-course view with role-aware management.
- * API touched: course detail, resources upload/download/delete, close/reopen, edit, coursework list/create.
- * UI contract: teacher owners manage; enrolled students consume resources and assignments.
+ * Purpose: Single-course view with role-aware course, resource, assignment, submission, and grade management.
+ * UI contract: teachers manage; enrolled students consume resources, submit work, and review grades.
  */
 
 const formatBytes = (bytes = 0) => {
@@ -27,6 +38,20 @@ const formatDate = (value) => {
     return new Date(value).toLocaleDateString();
 };
 
+const toDateInput = (value) => {
+    if (!value) return '';
+    return new Date(value).toISOString().slice(0, 10);
+};
+
+const isDeadlineReached = (value) => {
+    if (!value) return false;
+    const deadline = new Date(value);
+    if (deadline.getHours() === 0 && deadline.getMinutes() === 0 && deadline.getSeconds() === 0) {
+        deadline.setHours(23, 59, 59, 999);
+    }
+    return Date.now() > deadline.getTime();
+};
+
 const CoursePage = () => {
     const { courseId } = useParams();
     const navigate = useNavigate();
@@ -34,7 +59,12 @@ const CoursePage = () => {
     const [activeTab, setActiveTab] = useState('resources');
     const [courseWorks, setCourseWorks] = useState([]);
     const [resources, setResources] = useState([]);
+    const [gradesData, setGradesData] = useState(null);
+    const [submissionsByAssignment, setSubmissionsByAssignment] = useState({});
+    const [savedGradeIds, setSavedGradeIds] = useState({});
     const [showAssignModal, setShowAssignModal] = useState(false);
+    const [editingAssignment, setEditingAssignment] = useState(null);
+    const [resourceToDelete, setResourceToDelete] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editValues, setEditValues] = useState({ title: '', description: '' });
     const [selectedFile, setSelectedFile] = useState(null);
@@ -43,10 +73,11 @@ const CoursePage = () => {
     const loadCourseData = async () => {
         setMessage('');
         try {
-            const [courseRes, resourcesRes, worksRes] = await Promise.all([
+            const [courseRes, resourcesRes, worksRes, gradesRes] = await Promise.all([
                 fetch(`/api/Course/${courseId}`, { credentials: 'include' }),
                 fetch(`/api/Course/${courseId}/resources`, { credentials: 'include' }),
-                fetch(`/api/Course/${courseId}/courseworks`, { credentials: 'include' })
+                fetch(`/api/Course/${courseId}/courseworks`, { credentials: 'include' }),
+                fetch(`/api/Course/${courseId}/grades`, { credentials: 'include' })
             ]);
 
             if (!courseRes.ok) throw new Error('Could not load course');
@@ -56,6 +87,7 @@ const CoursePage = () => {
 
             if (resourcesRes.ok) setResources(await resourcesRes.json());
             if (worksRes.ok) setCourseWorks(await worksRes.json());
+            if (gradesRes.ok) setGradesData(await gradesRes.json());
         } catch (err) {
             console.error(err);
             setMessage('Could not load this course. Make sure you are enrolled or own it.');
@@ -65,6 +97,16 @@ const CoursePage = () => {
     useEffect(() => {
         loadCourseData();
     }, [courseId]);
+
+    const refreshGrades = async () => {
+        const res = await fetch(`/api/Course/${courseId}/grades`, { credentials: 'include' });
+        if (res.ok) setGradesData(await res.json());
+    };
+
+    const refreshAssignments = async () => {
+        const res = await fetch(`/api/Course/${courseId}/courseworks`, { credentials: 'include' });
+        if (res.ok) setCourseWorks(await res.json());
+    };
 
     const handleSaveCourse = async (e) => {
         e.preventDefault();
@@ -126,40 +168,149 @@ const CoursePage = () => {
         setMessage('Resource uploaded.');
     };
 
-    const handleDeleteResource = async (resourceId) => {
-        if (!window.confirm('Remove this resource from the course?')) return;
+    const handleDeleteResource = async () => {
+        if (!resourceToDelete) return;
 
-        const res = await fetch(`/api/Course/resources/${resourceId}`, {
+        const res = await fetch(`/api/Course/resources/${resourceToDelete.id}`, {
             method: 'DELETE',
             credentials: 'include'
         });
 
         if (res.ok) {
-            setResources(prev => prev.filter(resource => resource.id !== resourceId));
+            setResources(prev => prev.filter(resource => resource.id !== resourceToDelete.id));
+            setResourceToDelete(null);
+            setMessage('Resource deleted.');
         } else {
             setMessage('Failed to remove resource.');
         }
     };
 
-    const handleCreateAssignment = async (e) => {
+    const handleCreateOrUpdateAssignment = async (e) => {
         e.preventDefault();
-        const title = e.target.title.value;
-        const description = e.target.description.value;
-        const deadline = e.target.deadline.value;
+        const payload = {
+            title: e.target.title.value,
+            description: e.target.description.value,
+            deadline: e.target.deadline.value || null,
+            weightPercent: Number(e.target.weightPercent.value || 0)
+        };
 
-        const res = await fetch(`/api/Course/${courseId}/coursework`, {
-            method: 'POST',
+        const isEditingAssignment = Boolean(editingAssignment);
+        const url = isEditingAssignment
+            ? `/api/Course/${courseId}/coursework/${editingAssignment.id}`
+            : `/api/Course/${courseId}/coursework`;
+
+        const res = await fetch(url, {
+            method: isEditingAssignment ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ title, description, deadline })
+            body: JSON.stringify(payload)
         });
 
         if (res.ok) {
-            const cw = await res.json();
-            setCourseWorks(prev => [...prev, cw]);
+            await refreshAssignments();
+            await refreshGrades();
             setShowAssignModal(false);
+            setEditingAssignment(null);
         } else {
-            setMessage('Failed to create assignment.');
+            setMessage('Failed to save assignment.');
+        }
+    };
+
+    const handleSubmitAssignment = async (assignment, e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('textAnswer', e.target.textAnswer.value);
+        if (e.target.file.files?.[0]) formData.append('file', e.target.file.files[0]);
+
+        const res = await fetch(`/api/Course/coursework/${assignment.id}/submission`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (res.ok) {
+            const submission = await res.json();
+            setCourseWorks(prev => prev.map(cw =>
+                cw.id === assignment.id ? { ...cw, status: 'completed', submission } : cw
+            ));
+            await refreshGrades();
+            setMessage('Assignment submitted.');
+        } else {
+            setMessage('Could not submit. Check the deadline and your answer.');
+        }
+    };
+
+    const handleUploadSupportingFile = async (assignmentId, e) => {
+        e.preventDefault();
+        const file = e.target.file.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch(`/api/Course/coursework/${assignmentId}/supporting-files`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (res.ok) {
+            const fileData = await res.json();
+            setCourseWorks(prev => prev.map(cw =>
+                cw.id === assignmentId
+                    ? { ...cw, supportingFiles: [fileData, ...(cw.supportingFiles || [])] }
+                    : cw
+            ));
+            e.target.reset();
+        } else {
+            setMessage('Could not upload assignment file.');
+        }
+    };
+
+    const loadSubmissions = async (assignmentId) => {
+        if (submissionsByAssignment[assignmentId]) {
+            setSubmissionsByAssignment(prev => ({ ...prev, [assignmentId]: null }));
+            return;
+        }
+
+        const res = await fetch(`/api/Course/${courseId}/coursework/${assignmentId}/submissions`, {
+            credentials: 'include'
+        });
+
+        if (res.ok) {
+            const submissions = await res.json();
+            setSubmissionsByAssignment(prev => ({ ...prev, [assignmentId]: submissions }));
+        } else {
+            setMessage('Could not load submissions.');
+        }
+    };
+
+    const handleGradeSubmission = async (submissionId, assignmentId, e) => {
+        e.preventDefault();
+        const res = await fetch(`/api/Course/submissions/${submissionId}/grade`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                givenGrade: Number(e.target.givenGrade.value),
+                comment: e.target.comment.value
+            })
+        });
+
+        if (res.ok) {
+            const updatedSubmission = await res.json();
+            setSubmissionsByAssignment(prev => ({
+                ...prev,
+                [assignmentId]: (prev[assignmentId] || []).map(item =>
+                    item.submission?.id === submissionId
+                        ? { ...item, submission: updatedSubmission }
+                        : item
+                )
+            }));
+            setSavedGradeIds(prev => ({ ...prev, [submissionId]: true }));
+            await refreshGrades();
+        } else {
+            setMessage('Could not save grade.');
         }
     };
 
@@ -267,9 +418,15 @@ const CoursePage = () => {
                         >
                             Assignments
                         </button>
+                        <button
+                            className={activeTab === 'grades' ? 'tab active' : 'tab'}
+                            onClick={() => setActiveTab('grades')}
+                        >
+                            Grades
+                        </button>
                     </div>
                     {activeTab === 'assignments' && canManage && (
-                        <button className="upload-btn" onClick={() => setShowAssignModal(true)}>
+                        <button className="upload-btn" onClick={() => { setEditingAssignment(null); setShowAssignModal(true); }}>
                             <Plus size={18} />
                             Create Assignment
                         </button>
@@ -306,7 +463,7 @@ const CoursePage = () => {
                                         onDownload={() => {
                                             window.location.href = `/api/Course/resources/${resource.id}/download`;
                                         }}
-                                        onDelete={() => handleDeleteResource(resource.id)}
+                                        onDelete={() => setResourceToDelete(resource)}
                                     />
                                 ))}
                             </div>
@@ -315,23 +472,57 @@ const CoursePage = () => {
                 )}
 
                 {activeTab === 'assignments' && (
-                    <div className="resource-grid">
+                    <div className="assignment-list">
                         {courseWorks.length === 0 ? (
                             <div className="course-empty-state">No assignments yet.</div>
                         ) : (
-                            courseWorks.map(cw => (
+                            courseWorks.map(assignment => (
                                 <CourseAssignmentBox
-                                    key={cw.id}
-                                    title={cw.title}
-                                    description={cw.description}
-                                    deadline={formatDate(cw.deadline)}
-                                    status={course.isClosed ? 'completed' : 'pending'}
-                                    actionLabel={!canManage ? 'Answer Assignment' : undefined}
-                                    onAction={() => setMessage('Assignment answering will be implemented in the assignments module.')}
-                                />
+                                    key={assignment.id}
+                                    title={assignment.title}
+                                    description={assignment.description}
+                                    deadline={formatDate(assignment.deadline)}
+                                    weightPercent={assignment.weightPercent}
+                                    status={assignment.status}
+                                    actionLabel={canManage ? 'View Submissions' : undefined}
+                                    onAction={() => loadSubmissions(assignment.id)}
+                                >
+                                    <div className="assignment-files">
+                                        {(assignment.supportingFiles || []).map(file => (
+                                            <button
+                                                key={file.id}
+                                                className="file-link-btn"
+                                                onClick={() => { window.location.href = `/api/Course/coursework-files/${file.id}/download`; }}
+                                            >
+                                                <Download size={14} />
+                                                {file.title}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {canManage ? (
+                                        <TeacherAssignmentPanel
+                                            assignment={assignment}
+                                            submissions={submissionsByAssignment[assignment.id]}
+                                            onEdit={() => { setEditingAssignment(assignment); setShowAssignModal(true); }}
+                                            onUpload={(e) => handleUploadSupportingFile(assignment.id, e)}
+                                            onGrade={(submissionId, e) => handleGradeSubmission(submissionId, assignment.id, e)}
+                                            savedGradeIds={savedGradeIds}
+                                        />
+                                    ) : (
+                                        <StudentAssignmentPanel
+                                            assignment={assignment}
+                                            onSubmit={(e) => handleSubmitAssignment(assignment, e)}
+                                        />
+                                    )}
+                                </CourseAssignmentBox>
                             ))
                         )}
                     </div>
+                )}
+
+                {activeTab === 'grades' && (
+                    <GradesPanel gradesData={gradesData} canManage={canManage} />
                 )}
             </div>
 
@@ -339,36 +530,268 @@ const CoursePage = () => {
                 <div className="modal-overlay">
                     <div className="modal-content">
                         <div className="modal-header">
-                            <h3>Create Assignment</h3>
-                            <button className="modal-close" onClick={() => setShowAssignModal(false)}>x</button>
+                            <h3>{editingAssignment ? 'Edit Assignment' : 'Create Assignment'}</h3>
+                            <button
+                                className="modal-close"
+                                onClick={() => { setShowAssignModal(false); setEditingAssignment(null); }}
+                            >
+                                x
+                            </button>
                         </div>
-                        <form onSubmit={handleCreateAssignment}>
+                        <form onSubmit={handleCreateOrUpdateAssignment}>
                             <div className="form-group">
                                 <label>Assignment Title</label>
-                                <input name="title" type="text" required placeholder="Enter assignment title" />
+                                <input
+                                    name="title"
+                                    type="text"
+                                    required
+                                    placeholder="Enter assignment title"
+                                    defaultValue={editingAssignment?.title || ''}
+                                />
                             </div>
                             <div className="form-group">
                                 <label>Description</label>
-                                <textarea name="description" placeholder="Enter assignment description" />
+                                <textarea
+                                    name="description"
+                                    placeholder="Enter assignment description"
+                                    defaultValue={editingAssignment?.description || ''}
+                                />
                             </div>
                             <div className="form-group">
                                 <label>Due Date</label>
-                                <input name="deadline" type="date" required />
+                                <input
+                                    name="deadline"
+                                    type="date"
+                                    required
+                                    defaultValue={toDateInput(editingAssignment?.deadline)}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Final grade weight (%)</label>
+                                <input
+                                    name="weightPercent"
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.1"
+                                    defaultValue={editingAssignment?.weightPercent ?? 0}
+                                />
                             </div>
                             <div className="modal-actions">
-                                <button type="button" onClick={() => setShowAssignModal(false)} className="btn-cancel">
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowAssignModal(false); setEditingAssignment(null); }}
+                                    className="btn-cancel"
+                                >
                                     Cancel
                                 </button>
                                 <button type="submit" className="btn-confirm">
-                                    Create
+                                    Save
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
+
+            {resourceToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content confirm-modal">
+                        <div className="modal-header">
+                            <h3>Delete resource?</h3>
+                            <button className="modal-close" onClick={() => setResourceToDelete(null)}>
+                                x
+                            </button>
+                        </div>
+                        <p className="confirm-modal-text">
+                            Are you sure you want to delete <strong>{resourceToDelete.title}</strong>?
+                        </p>
+                        <div className="modal-actions">
+                            <button type="button" className="btn-cancel" onClick={() => setResourceToDelete(null)}>
+                                Cancel
+                            </button>
+                            <button type="button" className="btn-danger-confirm" onClick={handleDeleteResource}>
+                                Delete resource
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
+const StudentAssignmentPanel = ({ assignment, onSubmit }) => {
+    const submission = assignment.submission;
+    const locked = isDeadlineReached(assignment.deadline);
+
+    return (
+        <div className="assignment-panel">
+            {submission?.grade && (
+                <div className="grade-note">
+                    Grade: <strong>{submission.grade.givenGrade}</strong>
+                    {submission.grade.comment && <span> - {submission.grade.comment}</span>}
+                </div>
+            )}
+            {submission?.hasFile && (
+                <button
+                    className="file-link-btn"
+                    onClick={() => { window.location.href = `/api/Course/submissions/${submission.id}/download`; }}
+                >
+                    <Download size={14} />
+                    Download submitted file
+                </button>
+            )}
+            {!locked ? (
+                <form className="submission-form" onSubmit={onSubmit}>
+                    <textarea
+                        name="textAnswer"
+                        placeholder="Write your answer"
+                        defaultValue={submission?.textAnswer || ''}
+                    />
+                    <input name="file" type="file" />
+                    <button type="submit" className="upload-btn">
+                        {submission ? 'Update Answer' : 'Submit Answer'}
+                    </button>
+                </form>
+            ) : (
+                <div className="deadline-reached-state">
+                    <button type="button" className="deadline-reached-btn" disabled>
+                        Deadline reached
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const TeacherAssignmentPanel = ({ assignment, submissions, onEdit, onUpload, onGrade, savedGradeIds }) => {
+    return (
+        <div className="assignment-panel">
+            <div className="assignment-toolbar">
+                <button className="secondary-action-btn" onClick={onEdit}>
+                    <Pencil size={16} />
+                    Edit Assignment
+                </button>
+                <form className="support-upload-form" onSubmit={onUpload}>
+                    <input name="file" type="file" />
+                    <button type="submit" className="secondary-action-btn">
+                        <Upload size={16} />
+                        Upload Supporting File
+                    </button>
+                </form>
+            </div>
+
+            {submissions && (
+                <div className="submissions-list">
+                    {submissions.length === 0 ? (
+                        <div className="course-empty-state">No enrolled students yet.</div>
+                    ) : (
+                        submissions.map(item => (
+                            <div key={item.studentId} className="submission-row">
+                                <div>
+                                    <strong>{item.studentName}</strong>
+                                    <p>{item.email}</p>
+                                    <span className={`course-status course-status--${item.status === 'completed' ? 'open' : 'closed'}`}>
+                                        {item.status}
+                                    </span>
+                                </div>
+                                {item.submission ? (
+                                    <div className="submission-detail">
+                                        <p>{item.submission.textAnswer || 'No text answer.'}</p>
+                                        {item.submission.hasFile && (
+                                            <button
+                                                className="file-link-btn"
+                                                onClick={() => { window.location.href = `/api/Course/submissions/${item.submission.id}/download`; }}
+                                            >
+                                                <Download size={14} />
+                                                Download file
+                                            </button>
+                                        )}
+                                        <form className="grade-form" onSubmit={(e) => onGrade(item.submission.id, e)}>
+                                            <input
+                                                name="givenGrade"
+                                                type="number"
+                                                min="0"
+                                                max="10"
+                                                step="0.1"
+                                                placeholder="Grade"
+                                                defaultValue={item.submission.grade?.givenGrade ?? ''}
+                                            />
+                                            <input
+                                                name="comment"
+                                                placeholder="Comment"
+                                                defaultValue={item.submission.grade?.comment ?? ''}
+                                            />
+                                            <button className="btn-confirm" type="submit">Save Grade</button>
+                                            {savedGradeIds[item.submission.id] && (
+                                                <span className="grade-saved-indicator">
+                                                    <CheckCircle size={18} />
+                                                    Saved
+                                                </span>
+                                            )}
+                                        </form>
+                                    </div>
+                                ) : (
+                                    <div className="missing-submission">No submission</div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const GradesPanel = ({ gradesData, canManage }) => {
+    if (!gradesData) return <div className="course-empty-state">Loading grades...</div>;
+
+    if (!canManage) {
+        return (
+            <div className="grades-panel">
+                <div className="final-grade-box">
+                    Final grade: <strong>{gradesData.finalGrade ?? 'Not available yet'}</strong>
+                </div>
+                {gradesData.assignments?.map(row => (
+                    <GradeRow key={row.assignmentId} row={row} />
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="grades-panel">
+            {gradesData.students?.length === 0 ? (
+                <div className="course-empty-state">No registered students yet.</div>
+            ) : (
+                gradesData.students?.map(student => (
+                    <details key={student.studentId} className="student-grade-card">
+                        <summary>
+                            <span>{student.studentName}</span>
+                            <strong>{student.finalGrade ?? 'No final grade'}</strong>
+                        </summary>
+                        {student.assignments.map(row => (
+                            <GradeRow key={row.assignmentId} row={row} />
+                        ))}
+                    </details>
+                ))
+            )}
+        </div>
+    );
+};
+
+const GradeRow = ({ row }) => (
+    <div className="grade-row">
+        <div>
+            <strong>{row.title}</strong>
+            <p>{row.weightPercent}% - {row.status}</p>
+            {row.comment && <p>{row.comment}</p>}
+        </div>
+        <div className="grade-value">
+            {row.isGraded ? row.grade : <Flag size={18} />}
+        </div>
+    </div>
+);
 
 export default CoursePage;
