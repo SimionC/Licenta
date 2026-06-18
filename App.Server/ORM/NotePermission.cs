@@ -1,9 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-/// Purpose: per-user note permission table.
-/// Current reality: collaboration-role logic is primarily enforced in controllers; 
-///                  this table is not central yet.
+/// Purpose: direct per-user sharing permissions for personal notes.
 
 namespace App.Server.ORM
 {
@@ -19,8 +17,18 @@ namespace App.Server.ORM
         [Required]
         public int UserId { get; set; } // The user who gets the permission
 
-        public bool CanEdit { get; set; } = false;
-        public bool CanRead { get; set; } = true;
+        [Required]
+        public string Role { get; set; } = "viewer";
+
+        [Required]
+        public string Status { get; set; } = "accepted";
+
+        [Required]
+        public int InvitedByUserId { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
         // Foreign keys
         [ForeignKey("NoteId")]
@@ -28,5 +36,8 @@ namespace App.Server.ORM
 
         [ForeignKey("UserId")]
         public User User { get; set; } = null!;
+
+        [ForeignKey("InvitedByUserId")]
+        public User InvitedByUser { get; set; } = null!;
     }
 }

@@ -12,6 +12,7 @@ import {
     Plus,
     Search,
     Trash2,
+    UserRoundCheck,
     Users,
     X
 } from 'lucide-react';
@@ -26,10 +27,12 @@ import '../components/NotesNoteCard.css';
 const VIEW_ALL = 'all';
 const VIEW_RECENT = 'recent';
 const VIEW_NO_FOLDER = 'no-folder';
+const VIEW_SHARED = 'shared';
 
 const NotesPage = () => {
     const navigate = useNavigate();
     const [notes, setNotes] = useState([]);
+    const [sharedNotes, setSharedNotes] = useState([]);
     const [folders, setFolders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedView, setSelectedView] = useState(VIEW_ALL);
@@ -49,12 +52,15 @@ const NotesPage = () => {
                 fetch('/api/Notes/my-notes', { credentials: 'include' }),
                 fetch('/api/NoteFolders/my-folders', { credentials: 'include' })
             ]);
+            const sharedRes = await fetch('/api/Notes/shared-with-me', { credentials: 'include' });
 
             if (!notesRes.ok) throw new Error('Failed to fetch notes');
             if (!foldersRes.ok) throw new Error('Failed to fetch folders');
+            if (!sharedRes.ok) throw new Error('Failed to fetch shared notes');
 
             setNotes(await notesRes.json());
             setFolders(await foldersRes.json());
+            setSharedNotes(await sharedRes.json());
         } catch (err) {
             console.error('Error loading notes workspace:', err);
             setMessage('Could not load notes workspace.');
@@ -80,7 +86,7 @@ const NotesPage = () => {
 
     const filteredNotes = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
-        let nextNotes = [...notes];
+        let nextNotes = selectedView === VIEW_SHARED ? [...sharedNotes] : [...notes];
 
         if (selectedView === VIEW_RECENT) {
             nextNotes = nextNotes.slice(0, 10);
@@ -99,7 +105,7 @@ const NotesPage = () => {
         }
 
         return nextNotes;
-    }, [notes, searchTerm, selectedFolderId, selectedView]);
+    }, [notes, sharedNotes, searchTerm, selectedFolderId, selectedView]);
 
     const selectView = (view) => {
         setSelectedView(view);
@@ -193,6 +199,8 @@ const NotesPage = () => {
         ? 'No notes match your search.'
         : selectedFolder
             ? 'This folder is empty.'
+            : selectedView === VIEW_SHARED
+                ? 'No notes have been shared with you yet.'
             : selectedView === VIEW_NO_FOLDER
                 ? 'No notes without a folder.'
                 : 'No notes yet. Create your first note.';
@@ -223,6 +231,13 @@ const NotesPage = () => {
                     >
                         <Inbox size={17} />
                         No Folder
+                    </button>
+                    <button
+                        className={`notes-view-btn ${selectedView === VIEW_SHARED ? 'active' : ''}`}
+                        onClick={() => selectView(VIEW_SHARED)}
+                    >
+                        <UserRoundCheck size={17} />
+                        Shared with me
                     </button>
 
                     <div className="notes-folder-heading">Folders</div>
@@ -296,7 +311,9 @@ const NotesPage = () => {
                                     ? selectedFolder.name
                                     : selectedView === VIEW_RECENT
                                         ? 'Recently updated notes'
-                                        : selectedView === VIEW_NO_FOLDER
+                                        : selectedView === VIEW_SHARED
+                                            ? 'Notes other users shared with you'
+                                            : selectedView === VIEW_NO_FOLDER
                                             ? 'Notes not assigned to a folder'
                                             : 'All personal and collaboration notes'}
                             </p>
@@ -329,7 +346,7 @@ const NotesPage = () => {
                     ) : filteredNotes.length === 0 ? (
                         <div className="notes-empty-state">
                             <p>{emptyMessage}</p>
-                            {!searchTerm && (
+                            {!searchTerm && selectedView !== VIEW_SHARED && (
                                 <button className="notes-btn" onClick={handleCreateNote}>
                                     <Plus size={16} />
                                     Create Note
@@ -344,10 +361,14 @@ const NotesPage = () => {
                                         note={{
                                             id: note.id,
                                             title: note.title || 'Untitled Note',
-                                            tag: note.collaborationId ? 'Collaboration' : note.isPublic ? 'Public' : 'Private',
+                                            tag: selectedView === VIEW_SHARED
+                                                ? note.accessRole === 'editor' ? 'Can edit' : 'Shared'
+                                                : note.collaborationId ? 'Collaboration' : 'Private',
                                             desc: (note.content || '').substring(0, 140) + ((note.content || '').length > 140 ? '...' : ''),
                                             date: new Date(note.updatedAt || note.createdAt).toLocaleDateString(),
-                                            folderName: note.folderName || folderNameById[note.folderId]
+                                            folderName: selectedView === VIEW_SHARED
+                                                ? note.ownerEmail ? `Owner: ${note.ownerEmail}` : ''
+                                                : note.folderName || folderNameById[note.folderId]
                                         }}
                                     />
                                 </div>

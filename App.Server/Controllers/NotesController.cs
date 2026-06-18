@@ -4,7 +4,7 @@ using App.Server.ORM;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
-//Purpose: Full notes CRUD + access control (owner/public/collaboration member).
+//Purpose: Full notes CRUD + access control (owner/direct share/collaboration member).
 //Inputs/Outputs: Uses current user claims + note guid/collaboration id; maps Note entity to NoteModel DTO.
 //Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Models/NoteModel.cs (namespace currently App.Server.ORM).
 
@@ -71,13 +71,47 @@ namespace App.Server.Controllers
                 .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
                 .ToListAsync();
 
-            return Ok(notes.Select(MapNote));
+            return Ok(notes.Select(note => MapNote(note)));
+        }
+
+        //Trigger: GET api/Notes/shared-with-me.
+        //Guards: Requires current user id.
+        //Actions: Returns personal notes directly shared with the current user.
+        //Result: Shared note list with access role.
+        [HttpGet("shared-with-me")]
+        public async Task<ActionResult<IEnumerable<NoteModel>>> GetSharedWithMe()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var permissions = await _context.NotePermissions
+                .Include(p => p.Note)
+                    .ThenInclude(n => n.User)
+                .Include(p => p.Note)
+                    .ThenInclude(n => n.Folder)
+                .Where(p =>
+                    p.UserId == userId.Value &&
+                    p.Status == "accepted" &&
+                    p.Note.CollaborationId == null &&
+                    p.Note.UserId != userId.Value)
+                .OrderByDescending(p => p.Note.ModifyDate ?? p.Note.CreationDate)
+                .ToListAsync();
+
+            return Ok(permissions.Select(p => MapNote(
+                p.Note,
+                p.Role,
+                p.Role == "editor",
+                false
+            )));
         }
 
 
         //Trigger: GET api/Notes/accessible-notes.
         //Guards: Requires current user id.
-        //Actions: Combines own notes + collaboration notes + public notes.
+        //Actions: Combines own notes + collaboration notes + directly shared notes.
         //Result: Aggregated accessible list.
         [HttpGet("accessible-notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetAccessibleNotes()
@@ -94,14 +128,19 @@ namespace App.Server.Controllers
                 .Select(cm => cm.CollaborationId)
                 .ToListAsync();
 
+            var directSharedNoteIds = await _context.NotePermissions
+                .Where(p => p.UserId == userId.Value && p.Status == "accepted")
+                .Select(p => p.NoteId)
+                .ToListAsync();
+
             var notes = await _context.Notes
                 .Where(n =>
                     // User's own notes
                     n.UserId == userId.Value ||
                     // Notes in collaborations user is part of
                     (n.CollaborationId != null && userCollaborationIds.Contains(n.CollaborationId.Value)) ||
-                    // Public notes
-                    n.VisibilityTypeId == 2
+                    // Personal notes directly shared with the user
+                    (n.CollaborationId == null && directSharedNoteIds.Contains(n.Id))
                 )
                 .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
                 .Select(n => new NoteModel
@@ -112,7 +151,7 @@ namespace App.Server.Controllers
                     CreatedAt = n.CreationDate,
                     UpdatedAt = n.ModifyDate,
                     UserId = n.UserId,
-                    IsPublic = n.VisibilityTypeId == 2,
+                    IsPublic = false,
                     CollaborationId = n.CollaborationId,
                     Guid = n.Guid
                 })
@@ -123,7 +162,7 @@ namespace App.Server.Controllers
 
 
         //Trigger: GET note by api/Notes/guid(Globally Unique Identifier.
-        //Guards: Denies unless owner, public, or collaboration member.
+        //Guards: Denies unless owner, direct shared user, or collaboration member.
         //Actions: Loads note with related entities, computes role.
         //Result: Note DTO + X-User-Role response header.
         [HttpGet("{guid}")]
@@ -146,21 +185,35 @@ namespace App.Server.Controllers
             // Check if user can access this note
             bool canAccess = false;
             string? userRole = null;
+            bool canEdit = false;
+            bool canManageSharing = false;
 
             // Owner can always access
             if (note.UserId == currentUserId)
             {
                 canAccess = true;
                 userRole = "owner";
+                canEdit = true;
+                canManageSharing = true;
             }
-            // Public notes can be accessed by anyone
-            else if (note.VisibilityTypeId == 2)
+            // Direct note sharing for personal notes
+            else if (note.CollaborationId == null && currentUserId != null)
             {
-                canAccess = true;
-                userRole = "viewer"; // Public access is read-only
+                var permission = await _context.NotePermissions
+                    .FirstOrDefaultAsync(p =>
+                        p.NoteId == note.Id &&
+                        p.UserId == currentUserId.Value &&
+                        p.Status == "accepted");
+
+                if (permission != null)
+                {
+                    canAccess = true;
+                    userRole = permission.Role;
+                    canEdit = permission.Role == "editor";
+                }
             }
             // Check if user is part of the collaboration
-            else if (note.CollaborationId != null && currentUserId != null)
+            if (!canAccess && note.CollaborationId != null && currentUserId != null)
             {
                 var collaborationMember = await _context.CollaborationMembers
                     .FirstOrDefaultAsync(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == currentUserId.Value);
@@ -169,6 +222,7 @@ namespace App.Server.Controllers
                 {
                     canAccess = true;
                     userRole = collaborationMember.Role;
+                    canEdit = collaborationMember.Role == "owner" || collaborationMember.Role == "editor";
                 }
             }
 
@@ -178,8 +232,127 @@ namespace App.Server.Controllers
             }
 
             Response.Headers["X-User-Role"] = userRole ?? string.Empty;
+            Response.Headers["X-Can-Edit"] = canEdit.ToString();
+            Response.Headers["X-Can-Manage-Sharing"] = canManageSharing.ToString();
 
-            return Ok(MapNote(note));
+            return Ok(MapNote(note, userRole ?? "viewer", canEdit, canManageSharing));
+        }
+
+        //Trigger: GET api/Notes/{guid}/permissions.
+        //Guards: Owner-only; personal notes only.
+        //Result: Current direct sharing rows for a note.
+        [HttpGet("{guid}/permissions")]
+        public async Task<ActionResult<IEnumerable<NotePermissionModel>>> GetPermissions(string guid)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var note = await GetOwnedPersonalNote(guid, userId.Value);
+            if (note == null) return NotFoundOrForbiddenPersonalNote(guid, userId.Value);
+
+            var permissions = await _context.NotePermissions
+                .Include(p => p.User)
+                .Where(p => p.NoteId == note.Id)
+                .OrderBy(p => p.User.Email)
+                .ToListAsync();
+
+            return Ok(permissions.Select(MapPermission));
+        }
+
+        //Trigger: POST api/Notes/{guid}/permissions.
+        //Guards: Owner-only; personal notes only; registered target user.
+        //Actions: Shares a note by email with viewer/editor role.
+        [HttpPost("{guid}/permissions")]
+        public async Task<ActionResult<NotePermissionModel>> AddPermission(string guid, NotePermissionSaveModel model)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var note = await GetOwnedPersonalNote(guid, userId.Value);
+            if (note == null) return NotFoundOrForbiddenPersonalNote(guid, userId.Value);
+
+            var role = NormalizePermissionRole(model.Role);
+            if (role == null) return BadRequest(new { message = "Role must be viewer or editor." });
+
+            var email = model.Email?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(email)) return BadRequest(new { message = "Email is required." });
+
+            var targetUser = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
+            if (targetUser == null) return NotFound(new { message = "No registered user was found with that email." });
+            if (targetUser.Id == userId.Value) return BadRequest(new { message = "You cannot share a note with yourself." });
+
+            var duplicate = await _context.NotePermissions
+                .AnyAsync(p => p.NoteId == note.Id && p.UserId == targetUser.Id);
+            if (duplicate) return Conflict(new { message = "This user already has access to this note." });
+
+            var now = DateTime.UtcNow;
+            var permission = new NotePermission
+            {
+                NoteId = note.Id,
+                UserId = targetUser.Id,
+                Role = role,
+                Status = "accepted",
+                InvitedByUserId = userId.Value,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _context.NotePermissions.Add(permission);
+            await _context.SaveChangesAsync();
+
+            permission.User = targetUser;
+            return CreatedAtAction(nameof(GetPermissions), new { guid }, MapPermission(permission));
+        }
+
+        //Trigger: PUT api/Notes/{guid}/permissions/{permissionId}.
+        //Guards: Owner-only; personal notes only.
+        //Actions: Changes viewer/editor role.
+        [HttpPut("{guid}/permissions/{permissionId}")]
+        public async Task<ActionResult<NotePermissionModel>> UpdatePermission(string guid, int permissionId, NotePermissionSaveModel model)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var note = await GetOwnedPersonalNote(guid, userId.Value);
+            if (note == null) return NotFoundOrForbiddenPersonalNote(guid, userId.Value);
+
+            var role = NormalizePermissionRole(model.Role);
+            if (role == null) return BadRequest(new { message = "Role must be viewer or editor." });
+
+            var permission = await _context.NotePermissions
+                .Include(p => p.User)
+                .FirstOrDefaultAsync(p => p.Id == permissionId && p.NoteId == note.Id);
+
+            if (permission == null) return NotFound(new { message = "Permission not found." });
+
+            permission.Role = role;
+            permission.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(MapPermission(permission));
+        }
+
+        //Trigger: DELETE api/Notes/{guid}/permissions/{permissionId}.
+        //Guards: Owner-only; personal notes only.
+        //Actions: Removes direct note access.
+        [HttpDelete("{guid}/permissions/{permissionId}")]
+        public async Task<IActionResult> DeletePermission(string guid, int permissionId)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var note = await GetOwnedPersonalNote(guid, userId.Value);
+            if (note == null) return NotFoundOrForbiddenPersonalNote(guid, userId.Value);
+
+            var permission = await _context.NotePermissions
+                .FirstOrDefaultAsync(p => p.Id == permissionId && p.NoteId == note.Id);
+
+            if (permission == null) return NotFound(new { message = "Permission not found." });
+
+            _context.NotePermissions.Remove(permission);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
 
@@ -220,7 +393,7 @@ namespace App.Server.Controllers
                 CreationDate = DateTime.UtcNow,
                 ModifyDate = DateTime.UtcNow,
                 UserId = userId.Value,
-                VisibilityTypeId = noteModel.IsPublic ? 2 : 1, // 2 = public, 1 = private
+                VisibilityTypeId = 1,
                 CollaborationId = noteModel.CollaborationId,
                 FolderId = noteModel.CollaborationId == null ? noteModel.FolderId : null
             };
@@ -253,11 +426,25 @@ namespace App.Server.Controllers
 
             // Check if user can edit this note
             bool canEdit = false;
+            bool isOwner = note.UserId == userId.Value;
+            bool isDirectSharedEditor = false;
 
             // Owner can always edit
-            if (note.UserId == userId.Value)
+            if (isOwner)
             {
                 canEdit = true;
+            }
+            // Direct shared editors can only edit personal note title/content
+            else if (note.CollaborationId == null)
+            {
+                isDirectSharedEditor = await _context.NotePermissions
+                    .AnyAsync(p =>
+                        p.NoteId == note.Id &&
+                        p.UserId == userId.Value &&
+                        p.Status == "accepted" &&
+                        p.Role == "editor");
+
+                canEdit = isDirectSharedEditor;
             }
             // Check if user is part of the collaboration with edit permissions
             else if (note.CollaborationId != null)
@@ -279,11 +466,11 @@ namespace App.Server.Controllers
             note.Title = noteModel.Title ?? note.Title;
             note.Text = noteModel.Content ?? note.Text;
             note.ModifyDate = DateTime.UtcNow;
-            note.VisibilityTypeId = noteModel.IsPublic ? 2 : 1;
 
-            // Only allow owner to change collaboration
-            if (note.UserId == userId.Value)
+            // Only the owner can change visibility, collaboration linkage, and personal folder placement.
+            if (isOwner)
             {
+                note.VisibilityTypeId = 1;
                 note.CollaborationId = noteModel.CollaborationId;
                 if (note.CollaborationId == null)
                 {
@@ -304,7 +491,12 @@ namespace App.Server.Controllers
             if (note.FolderId != null)
                 await _context.Entry(note).Reference(n => n.Folder).LoadAsync();
 
-            return Ok(MapNote(note));
+            return Ok(MapNote(
+                note,
+                isOwner ? "owner" : isDirectSharedEditor ? "editor" : "editor",
+                true,
+                isOwner
+            ));
         }
 
         //Trigger: DELETE by  api/Notes/guid.
@@ -339,35 +531,6 @@ namespace App.Server.Controllers
         }
 
 
-        //Trigger: GET  api/Notes/public.
-        //Guards: Auth required by controller.
-        //Actions: Returns only public notes with truncated preview content.
-        //Result: Public notes feed.
-        [HttpGet("public")]
-        public async Task<ActionResult<IEnumerable<NoteModel>>> GetPublicNotes()
-        {
-            var notes = await _context.Notes
-                .Where(n => n.VisibilityTypeId == 2) // Public notes
-                .Include(n => n.User)
-                .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
-                .Select(n => new NoteModel
-                {
-                    Id = n.Id,
-                    Title = n.Title,
-                    Content = n.Text.Length > 200 ? n.Text.Substring(0, 200) + "..." : n.Text,
-                    CreatedAt = n.CreationDate,
-                    UpdatedAt = n.ModifyDate,
-                    UserId = n.UserId,
-                    IsPublic = true,
-                    CollaborationId = n.CollaborationId,
-                    Guid = n.Guid
-                })
-                .ToListAsync();
-
-            return Ok(notes);
-        }
-
-
         //Trigger: GET api/Notes/collaboration/{id}.
         //Guards: User must be member of collaboration.
         //Actions: Reads all notes linked to collaboration.
@@ -396,7 +559,7 @@ namespace App.Server.Controllers
                 .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
                 .ToListAsync();
 
-            return Ok(notes.Select(MapNote));
+            return Ok(notes.Select(note => MapNote(note)));
         }
 
 
@@ -459,7 +622,39 @@ namespace App.Server.Controllers
             return await _context.NoteFolders.AnyAsync(f => f.Id == folderId && f.UserId == userId);
         }
 
-        private static NoteModel MapNote(Note note)
+        private async Task<Note?> GetOwnedPersonalNote(string guid, int userId)
+        {
+            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Guid == guid);
+            if (note == null || note.UserId != userId || note.CollaborationId != null)
+            {
+                return null;
+            }
+
+            return note;
+        }
+
+        private ActionResult NotFoundOrForbiddenPersonalNote(string guid, int userId)
+        {
+            var noteExists = _context.Notes.Any(n => n.Guid == guid);
+            if (!noteExists) return NotFound(new { message = "Note not found." });
+
+            var isCollaborationNote = _context.Notes.Any(n => n.Guid == guid && n.CollaborationId != null && n.UserId == userId);
+            if (isCollaborationNote) return BadRequest(new { message = "Direct sharing is only available for personal notes." });
+
+            return Forbid();
+        }
+
+        private static string? NormalizePermissionRole(string? role)
+        {
+            var normalized = role?.Trim().ToLowerInvariant();
+            return normalized == "viewer" || normalized == "editor" ? normalized : null;
+        }
+
+        private static NoteModel MapNote(
+            Note note,
+            string accessRole = "owner",
+            bool canEdit = true,
+            bool canManageSharing = true)
         {
             return new NoteModel
             {
@@ -469,12 +664,49 @@ namespace App.Server.Controllers
                 CreatedAt = note.CreationDate,
                 UpdatedAt = note.ModifyDate,
                 UserId = note.UserId,
-                IsPublic = note.VisibilityTypeId == 2,
+                IsPublic = false,
                 CollaborationId = note.CollaborationId,
                 FolderId = note.FolderId,
                 FolderName = note.Folder?.Name,
+                AccessRole = accessRole,
+                CanEdit = canEdit,
+                CanManageSharing = canManageSharing,
+                OwnerEmail = note.User?.Email,
                 Guid = note.Guid
             };
         }
+
+        private static NotePermissionModel MapPermission(NotePermission permission)
+        {
+            return new NotePermissionModel
+            {
+                Id = permission.Id,
+                UserId = permission.UserId,
+                Email = permission.User.Email,
+                DisplayName = $"{permission.User.Prenume} {permission.User.Nume}".Trim(),
+                Role = permission.Role,
+                Status = permission.Status,
+                CreatedAt = permission.CreatedAt,
+                UpdatedAt = permission.UpdatedAt
+            };
+        }
+    }
+
+    public class NotePermissionSaveModel
+    {
+        public string? Email { get; set; }
+        public string? Role { get; set; }
+    }
+
+    public class NotePermissionModel
+    {
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Role { get; set; } = "viewer";
+        public string Status { get; set; } = "accepted";
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
     }
 }

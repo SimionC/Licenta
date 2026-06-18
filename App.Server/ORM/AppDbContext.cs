@@ -72,6 +72,28 @@ public partial class AppDbContext : DbContext
             .HasForeignKey(f => f.ParentFolderId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<NotePermission>()
+            .HasIndex(p => new { p.NoteId, p.UserId })
+            .IsUnique();
+
+        modelBuilder.Entity<NotePermission>()
+            .HasOne(p => p.Note)
+            .WithMany()
+            .HasForeignKey(p => p.NoteId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<NotePermission>()
+            .HasOne(p => p.User)
+            .WithMany()
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<NotePermission>()
+            .HasOne(p => p.InvitedByUser)
+            .WithMany()
+            .HasForeignKey(p => p.InvitedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         OnModelCreatingPartial(modelBuilder);
     }
 

@@ -27,6 +27,14 @@ namespace App.Server.ORM
 
         public string? FolderName { get; set; }
 
+        public string AccessRole { get; set; } = "owner";
+
+        public bool CanEdit { get; set; } = true;
+
+        public bool CanManageSharing { get; set; } = true;
+
+        public string? OwnerEmail { get; set; }
+
         // Added Guid property to match Note entity
         public string? Guid { get; set; }
     }
