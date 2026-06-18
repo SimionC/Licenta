@@ -23,6 +23,10 @@ namespace App.Server.ORM
 
         public int? CollaborationId { get; set; }
 
+        public int? FolderId { get; set; }
+
+        public string? FolderName { get; set; }
+
         // Added Guid property to match Note entity
         public string? Guid { get; set; }
     }

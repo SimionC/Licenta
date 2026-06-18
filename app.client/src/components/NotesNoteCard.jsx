@@ -10,7 +10,10 @@ const NotesNoteCard = ({ note }) => (
         </div>
         <h4 className="notes-title">{note.title}</h4>
         <p className="notes-desc">{note.desc}</p>
-        <div className="notes-footer">{note.date}</div>
+        <div className="notes-footer">
+            <span>{note.date}</span>
+            {note.folderName && <span>{note.folderName}</span>}
+        </div>
     </div>
 );
 

@@ -32,6 +32,8 @@ public partial class Note
 
     public int? CollaborationId { get; set; }
 
+    public int? FolderId { get; set; }
+
     // Foreign keys
     [ForeignKey("UserId")]
     public User User { get; set; } = null!;
@@ -41,6 +43,9 @@ public partial class Note
 
     [ForeignKey("CollaborationId")]
     public Collaboration? Collaboration { get; set; } = null;
+
+    [ForeignKey("FolderId")]
+    public NoteFolder? Folder { get; set; } = null;
 }
 
 

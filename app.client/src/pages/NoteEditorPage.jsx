@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, X, Share2, Copy } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Save, Eye, X, Share2, Copy, Folder } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import CollaboratorsSection from '../components/CollaboratorsSection'
 import './NoteEditorPage.css';
@@ -24,6 +24,7 @@ import 'highlight.js/styles/github.css'
 const NoteEditorPage = () => {
     const { noteGuid } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [note, setNote] = useState(null);
     const [title, setTitle] = useState('Untitled Note');
     const [content, setContent] = useState('# Welcome to your new note\n\nStart writing here...');
@@ -33,6 +34,19 @@ const NoteEditorPage = () => {
     const [isPublic, setIsPublic] = useState(false);
     const [fetchError, setFetchError] = useState('')
     const [members, setMembers] = useState([]);
+    const [folders, setFolders] = useState([]);
+    const [folderId, setFolderId] = useState('');
+    const [statusMessage, setStatusMessage] = useState('');
+    const [statusTone, setStatusTone] = useState('success');
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    useEffect(() => {
+        fetch('/api/NoteFolders/my-folders', { credentials: 'include' })
+            .then(res => res.ok ? res.json() : [])
+            .then(data => setFolders(Array.isArray(data) ? data : []))
+            .catch(() => setFolders([]));
+    }, []);
 
     // useEffect to fetch note data when noteGuid changes
     useEffect(() => {
@@ -40,6 +54,7 @@ const NoteEditorPage = () => {
         // fetchNote effect: initializes editor for new note or loads existing note + members.
         const fetchNote = async () => {
             if (!noteGuid) {
+                const params = new URLSearchParams(location.search);
                 // This means it's a brand new note creation (e.g., /notes/new)
                 setIsNewNote(true);
                 setIsEditing(true); // Start in editing mode for new notes
@@ -47,7 +62,9 @@ const NoteEditorPage = () => {
                 setTitle('Untitled Note');
                 setContent('# Welcome to your new note\\n\\nStart writing here...');
                 setIsPublic(false);
+                setFolderId(params.get('folderId') || '');
                 setMembers([]); // No members for a new non-collaboration note
+                setStatusMessage('');
                 return;
             }
 
@@ -70,7 +87,9 @@ const NoteEditorPage = () => {
                 setTitle(data.title);
                 setContent(data.content);
                 setIsPublic(data.isPublic);
+                setFolderId(data.folderId ? String(data.folderId) : '');
                 setIsNewNote(false); // It's an existing note
+                setStatusMessage('');
 
                 // If it's a collaboration note, set members
                 if (data.collaborationId) {
@@ -96,22 +115,37 @@ const NoteEditorPage = () => {
         };
 
         fetchNote();
-    }, [noteGuid]);
+    }, [noteGuid, location.search]);
 
     //const handlePublicToggleChange = () => {
     //    setIsPublic(prev => !prev);
     //};
 
     // handleSave: builds payload, selects POST vs PUT, then syncs local state and route.
+    const showStatus = (message, tone = 'success') => {
+        setStatusMessage(message);
+        setStatusTone(tone);
+    };
+
+    const copyPublicLink = () => {
+        if (!note) return;
+        navigator.clipboard
+            .writeText(`${window.location.origin}/notes/${note.guid}`)
+            .then(() => showStatus('Link copied.'))
+            .catch(() => showStatus('Could not copy link.', 'error'));
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         setFetchError('');
+        setStatusMessage('');
 
         // Ensure content is not null when sending
         const payload = {
             title: title,
             content: content || '', // Ensure content is not null
             isPublic: isPublic,
+            folderId: note?.collaborationId ? null : (folderId ? Number(folderId) : null),
             // Include collaborationId in the payload ONLY if the 'note' state already has one.
             // This preserves it on updates.
             ...(note?.collaborationId && { collaborationId: note.collaborationId })
@@ -137,6 +171,7 @@ const NoteEditorPage = () => {
 
             const savedNote = await res.json();
             setNote(savedNote);
+            setFolderId(savedNote.folderId ? String(savedNote.folderId) : '');
             setIsNewNote(false); // No longer a new note once saved
             setIsEditing(false); // Exit editing mode after saving
 
@@ -145,11 +180,10 @@ const NoteEditorPage = () => {
                 navigate(`/notes/${savedNote.guid}`);
             }
 
-            alert('Note saved successfully!');
+            showStatus('Note saved successfully.');
         } catch (err) {
             console.error('Error saving note:', err);
-            setFetchError(err.message || 'Error saving note.');
-            alert(`Error saving note: ${err.message}`);
+            showStatus(err.message || 'Error saving note.', 'error');
         } finally {
             setIsSaving(false);
         }
@@ -159,8 +193,8 @@ const NoteEditorPage = () => {
     const handleDelete = async () => {
         if (!note || isNewNote) return;
 
-        if (!window.confirm('Are you sure you want to delete this note?')) return;
-
+        setIsDeleting(true);
+        setStatusMessage('');
         try {
             //1. delete the note
             let response = await fetch(`/api/Notes/${noteGuid}`, {
@@ -182,7 +216,10 @@ const NoteEditorPage = () => {
             navigate('/notes');
         } catch (error) {
             console.error('Error deleting note:', error);
-            alert('Failed to delete note. Please try again.');
+            showStatus('Failed to delete note. Please try again.', 'error');
+            setDeleteModalOpen(false);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -195,6 +232,7 @@ const NoteEditorPage = () => {
             setTitle(note.title);
             setContent(note.content);
             setIsPublic(note.isPublic);
+            setFolderId(note.folderId ? String(note.folderId) : '');
             setIsEditing(false); // Exit editing mode
             // If collaborators were modified, you might want to re-fetch them here or store original state
         }
@@ -266,7 +304,7 @@ const NoteEditorPage = () => {
                                     <>
                                         <button
                                             className="note-action-btn delete-btn"
-                                            onClick={handleDelete}
+                                            onClick={() => setDeleteModalOpen(true)}
                                         >
                                             Delete
                                         </button>
@@ -276,6 +314,33 @@ const NoteEditorPage = () => {
                         )}
                     </div>
                 </div>
+
+                {statusMessage && (
+                    <div className={`note-status-message ${statusTone === 'error' ? 'error' : ''}`}>
+                        {statusMessage}
+                    </div>
+                )}
+
+                {!note?.collaborationId && (
+                    <div className="note-folder-bar">
+                        <Folder size={18} />
+                        <label>
+                            Folder
+                            <select
+                                value={folderId}
+                                onChange={(e) => setFolderId(e.target.value)}
+                                disabled={!isEditing}
+                            >
+                                <option value="">No Folder</option>
+                                {folders.map(folder => (
+                                    <option key={folder.id} value={folder.id}>
+                                        {folder.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
+                )}
 
                 {/* ─── Main Container ─── */}
                 <div className="note-main-flex">
@@ -332,11 +397,7 @@ const NoteEditorPage = () => {
                             {note && isPublic && (
                                 <button
                                     className="copy-link-icon"
-                                    onClick={() => {
-                                        navigator.clipboard
-                                            .writeText(`${window.location.origin}/notes/${note.guid}`)
-                                            .then(() => alert('Link copied!'))
-                                    }}
+                                    onClick={copyPublicLink}
                                 >
                                     <Copy size={16} />
                                 </button>
@@ -374,11 +435,7 @@ const NoteEditorPage = () => {
                                     value={`${window.location.origin}/notes/${note.guid}`}
                                 />
                                 <button
-                                    onClick={() => {
-                                        navigator.clipboard
-                                            .writeText(`${window.location.origin}/notes/${note.guid}`)
-                                            .then(() => alert('Link copied!'))
-                                    }}
+                                    onClick={copyPublicLink}
                                 >
                                     Copy Link
                                 </button>
@@ -388,6 +445,38 @@ const NoteEditorPage = () => {
                 </div>
 
             </div>
+
+            {deleteModalOpen && (
+                <div className="note-modal-overlay">
+                    <div className="note-confirm-modal">
+                        <div className="note-confirm-header">
+                            <h3>Delete note?</h3>
+                            <button onClick={() => setDeleteModalOpen(false)} disabled={isDeleting}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <p>
+                            Are you sure you want to permanently delete <strong>{title}</strong>? This cannot be undone.
+                        </p>
+                        <div className="note-confirm-actions">
+                            <button
+                                className="note-confirm-cancel"
+                                onClick={() => setDeleteModalOpen(false)}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="note-confirm-danger"
+                                onClick={handleDelete}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete permanently'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

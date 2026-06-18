@@ -1,12 +1,11 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import CoursesCourseCard from '../components/CoursesCourseCard';
 import Sidebar from '../components/Sidebar';
 //import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
 
 /**
  * Purpose: Course listing hub with role-specific behavior (student join vs teacher manage).
- * API touched: /api/Course/student, /api/Course/teacher, /api/Course/create, /api/Course/delete/{id}, /api/Course/join.
+ * API touched: /api/Course/student, /api/Course/teacher, /api/Course/create, /api/Course/join.
  * State contract: userType selects fetch branch and visible actions.
  */
 
@@ -151,21 +150,6 @@ const AllCoursesPage = ({ userType }) => {
         }
     };
 
-    // handleDeleteCourse: teacher cleanup flow with optimistic :) local removal.
-    const handleDeleteCourse = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this course?")) return;
-
-        const res = await fetch(`/api/Course/delete/${id}`, {
-            method: "DELETE",
-        });
-
-        if (res.ok) {
-            setCourses(courses.filter(c => c.id !== id));
-        } else {
-            alert("Failed to delete course.");
-        }
-    };
-
     // handleJoinCourse: student flow to join by code and refresh registered list.
     const handleJoinCourse = async () => {
         const res = await fetch("/api/Course/join", {
@@ -267,15 +251,7 @@ const AllCoursesPage = ({ userType }) => {
                                     {courses.length === 0
                                         ? <p>No courses created yet.</p>
                                         : courses.map(course => (
-                                            <div key={course.id}>
-                                                <CoursesCourseCard course={course} />
-                                                <button
-                                                    className="btn btn-danger btn-sm mt-2"
-                                                    onClick={() => handleDeleteCourse(course.id)}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
+                                            <CoursesCourseCard key={course.id} course={course} />
                                         ))}
                                 </div>
                             )}

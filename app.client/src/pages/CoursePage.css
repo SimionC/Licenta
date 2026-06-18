@@ -112,6 +112,23 @@
     background: #f9fafb;
 }
 
+.danger-action-btn {
+    border: 1px solid #fecaca;
+    background: #fff;
+    color: #b91c1c;
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.danger-action-btn:hover {
+    background: #fff1f2;
+}
+
 .course-tabs {
     display: flex;
     justify-content: start;

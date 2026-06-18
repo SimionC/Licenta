@@ -42,6 +42,7 @@ public partial class AppDbContext : DbContext
     public DbSet<CourseWorkResource> CourseWorkResources { get; set; } = null!;
     public DbSet<Grade> Grades { get; set; } = null!;
     public DbSet<Note> Notes { get; set; } = null!;
+    public DbSet<NoteFolder> NoteFolders { get; set; } = null!;
     public DbSet<NotePermission> NotePermissions { get; set; } = null!;
     public DbSet<SubmittedWork> SubmittedWork { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
@@ -52,6 +53,24 @@ public partial class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Note>()
+            .HasOne(n => n.Folder)
+            .WithMany(f => f.Notes)
+            .HasForeignKey(n => n.FolderId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<NoteFolder>()
+            .HasOne(f => f.User)
+            .WithMany()
+            .HasForeignKey(f => f.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<NoteFolder>()
+            .HasOne(f => f.ParentFolder)
+            .WithMany(f => f.ChildFolders)
+            .HasForeignKey(f => f.ParentFolderId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         OnModelCreatingPartial(modelBuilder);
     }

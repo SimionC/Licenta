@@ -11,6 +11,7 @@ import {
     Pencil,
     Plus,
     Save,
+    Trash2,
     Unlock,
     Upload
 } from 'lucide-react';
@@ -65,6 +66,7 @@ const CoursePage = () => {
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [editingAssignment, setEditingAssignment] = useState(null);
     const [resourceToDelete, setResourceToDelete] = useState(null);
+    const [showDeleteCourseModal, setShowDeleteCourseModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editValues, setEditValues] = useState({ title: '', description: '' });
     const [selectedFile, setSelectedFile] = useState(null);
@@ -141,6 +143,20 @@ const CoursePage = () => {
         }
 
         setCourse(await res.json());
+    };
+
+    const handleDeleteCourse = async () => {
+        const res = await fetch(`/api/Course/delete/${courseId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (res.ok) {
+            navigate('/courses/all');
+        } else {
+            setShowDeleteCourseModal(false);
+            setMessage('Failed to delete course.');
+        }
     };
 
     const handleUploadResource = async (e) => {
@@ -365,6 +381,10 @@ const CoursePage = () => {
                             <button className="secondary-action-btn" onClick={handleToggleClosed}>
                                 {course.isClosed ? <Unlock size={16} /> : <Lock size={16} />}
                                 {course.isClosed ? 'Reopen' : 'Close'}
+                            </button>
+                            <button className="danger-action-btn" onClick={() => setShowDeleteCourseModal(true)}>
+                                <Trash2 size={16} />
+                                Delete
                             </button>
                         </div>
                     )}
@@ -612,6 +632,30 @@ const CoursePage = () => {
                             </button>
                             <button type="button" className="btn-danger-confirm" onClick={handleDeleteResource}>
                                 Delete resource
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDeleteCourseModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content confirm-modal">
+                        <div className="modal-header">
+                            <h3>Delete course?</h3>
+                            <button className="modal-close" onClick={() => setShowDeleteCourseModal(false)}>
+                                x
+                            </button>
+                        </div>
+                        <p className="confirm-modal-text">
+                            Are you sure you want to delete <strong>{course.title}</strong>? This will remove the course and its related course data.
+                        </p>
+                        <div className="modal-actions">
+                            <button type="button" className="btn-cancel" onClick={() => setShowDeleteCourseModal(false)}>
+                                Cancel
+                            </button>
+                            <button type="button" className="btn-danger-confirm" onClick={handleDeleteCourse}>
+                                Delete course
                             </button>
                         </div>
                     </div>

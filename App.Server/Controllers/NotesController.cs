@@ -46,7 +46,7 @@ namespace App.Server.Controllers
         //Actions: Filters notes by owner, orders recent first, maps DTO.
         //Result: User-owned notes list.
         [HttpGet("my-notes")]
-        public async Task<ActionResult<IEnumerable<NoteModel>>> GetMyNotes()
+        public async Task<ActionResult<IEnumerable<NoteModel>>> GetMyNotes([FromQuery] int? folderId, [FromQuery] bool noFolder = false)
         {
             var userId = GetCurrentUserId();
             if (userId == null)
@@ -54,24 +54,24 @@ namespace App.Server.Controllers
                 return Unauthorized();
             }
 
-            var notes = await _context.Notes
-                .Where(n => n.UserId == userId.Value)
+            if (folderId != null && !await UserOwnsFolder(userId.Value, folderId.Value))
+                return Forbid();
+
+            var query = _context.Notes
+                .Include(n => n.Folder)
+                .Where(n => n.UserId == userId.Value);
+
+            if (folderId != null)
+                query = query.Where(n => n.FolderId == folderId.Value);
+
+            if (noFolder)
+                query = query.Where(n => n.FolderId == null);
+
+            var notes = await query
                 .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
-                .Select(n => new NoteModel
-                {
-                    Id = n.Id,
-                    Title = n.Title,
-                    Content = n.Text, // Map Text to Content
-                    CreatedAt = n.CreationDate,
-                    UpdatedAt = n.ModifyDate,
-                    UserId = n.UserId,
-                    IsPublic = n.VisibilityTypeId == 2, // 2 = public, 1 = private
-                    CollaborationId = n.CollaborationId,
-                    Guid = n.Guid
-                })
                 .ToListAsync();
 
-            return Ok(notes);
+            return Ok(notes.Select(MapNote));
         }
 
 
@@ -133,6 +133,7 @@ namespace App.Server.Controllers
                 .Include(n => n.User)
                 .Include(n => n.VisibilityType)
                 .Include(n => n.Collaboration)
+                .Include(n => n.Folder)
                 .FirstOrDefaultAsync(n => n.Guid == guid);
 
             if (note == null)
@@ -176,22 +177,9 @@ namespace App.Server.Controllers
                 return Forbid();
             }
 
-            var noteModel = new NoteModel
-            {
-                Id = note.Id,
-                Title = note.Title,
-                Content = note.Text,
-                CreatedAt = note.CreationDate,
-                UpdatedAt = note.ModifyDate,
-                UserId = note.UserId,
-                IsPublic = note.VisibilityTypeId == 2,
-                CollaborationId = note.CollaborationId,
-                Guid = note.Guid
-            };
-
             Response.Headers["X-User-Role"] = userRole ?? string.Empty;
 
-            return Ok(noteModel);
+            return Ok(MapNote(note));
         }
 
 
@@ -219,6 +207,10 @@ namespace App.Server.Controllers
                     return Forbid("You are not a member of this collaboration");
                 }
             }
+            else if (noteModel.FolderId != null && !await UserOwnsFolder(userId.Value, noteModel.FolderId.Value))
+            {
+                return Forbid("You cannot use a folder owned by another user");
+            }
 
             var note = new Note
             {
@@ -229,26 +221,14 @@ namespace App.Server.Controllers
                 ModifyDate = DateTime.UtcNow,
                 UserId = userId.Value,
                 VisibilityTypeId = noteModel.IsPublic ? 2 : 1, // 2 = public, 1 = private
-                CollaborationId = noteModel.CollaborationId
+                CollaborationId = noteModel.CollaborationId,
+                FolderId = noteModel.CollaborationId == null ? noteModel.FolderId : null
             };
 
             _context.Notes.Add(note);
             await _context.SaveChangesAsync();
 
-            var createdNoteModel = new NoteModel
-            {
-                Id = note.Id,
-                Title = note.Title,
-                Content = note.Text,
-                CreatedAt = note.CreationDate,
-                UpdatedAt = note.ModifyDate,
-                UserId = note.UserId,
-                IsPublic = note.VisibilityTypeId == 2,
-                CollaborationId = note.CollaborationId,
-                Guid = note.Guid
-            };
-
-            return CreatedAtAction(nameof(GetNote), new { guid = note.Guid }, createdNoteModel);
+            return CreatedAtAction(nameof(GetNote), new { guid = note.Guid }, MapNote(note));
         }
 
 
@@ -305,25 +285,26 @@ namespace App.Server.Controllers
             if (note.UserId == userId.Value)
             {
                 note.CollaborationId = noteModel.CollaborationId;
+                if (note.CollaborationId == null)
+                {
+                    if (noteModel.FolderId != null && !await UserOwnsFolder(userId.Value, noteModel.FolderId.Value))
+                        return Forbid("You cannot use a folder owned by another user");
+
+                    note.FolderId = noteModel.FolderId;
+                }
+                else
+                {
+                    note.FolderId = null;
+                }
             }
 
             _context.Entry(note).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
-            var updatedNoteModel = new NoteModel
-            {
-                Id = note.Id,
-                Title = note.Title,
-                Content = note.Text,
-                CreatedAt = note.CreationDate,
-                UpdatedAt = note.ModifyDate,
-                UserId = note.UserId,
-                IsPublic = note.VisibilityTypeId == 2,
-                CollaborationId = note.CollaborationId,
-                Guid = note.Guid
-            };
+            if (note.FolderId != null)
+                await _context.Entry(note).Reference(n => n.Folder).LoadAsync();
 
-            return Ok(updatedNoteModel);
+            return Ok(MapNote(note));
         }
 
         //Trigger: DELETE by  api/Notes/guid.
@@ -411,22 +392,11 @@ namespace App.Server.Controllers
 
             var notes = await _context.Notes
                 .Where(n => n.CollaborationId == collaborationId)
+                .Include(n => n.Folder)
                 .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
-                .Select(n => new NoteModel
-                {
-                    Id = n.Id,
-                    Title = n.Title,
-                    Content = n.Text,
-                    CreatedAt = n.CreationDate,
-                    UpdatedAt = n.ModifyDate,
-                    UserId = n.UserId,
-                    IsPublic = n.VisibilityTypeId == 2,
-                    CollaborationId = n.CollaborationId,
-                    Guid = n.Guid
-                })
                 .ToListAsync();
 
-            return Ok(notes);
+            return Ok(notes.Select(MapNote));
         }
 
 
@@ -482,6 +452,29 @@ namespace App.Server.Controllers
             }
 
             return null;
+        }
+
+        private async Task<bool> UserOwnsFolder(int userId, int folderId)
+        {
+            return await _context.NoteFolders.AnyAsync(f => f.Id == folderId && f.UserId == userId);
+        }
+
+        private static NoteModel MapNote(Note note)
+        {
+            return new NoteModel
+            {
+                Id = note.Id,
+                Title = note.Title,
+                Content = note.Text,
+                CreatedAt = note.CreationDate,
+                UpdatedAt = note.ModifyDate,
+                UserId = note.UserId,
+                IsPublic = note.VisibilityTypeId == 2,
+                CollaborationId = note.CollaborationId,
+                FolderId = note.FolderId,
+                FolderName = note.Folder?.Name,
+                Guid = note.Guid
+            };
         }
     }
 }

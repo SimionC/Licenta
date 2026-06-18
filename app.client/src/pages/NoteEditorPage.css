@@ -87,6 +87,50 @@
     align-items: center;
 }
 
+.note-status-message {
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.note-status-message.error {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.note-folder-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 1.5rem;
+    color: #2e7d32;
+}
+
+.note-folder-bar label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #374151;
+    font-weight: 700;
+}
+
+.note-folder-bar select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-width: 180px;
+    background: #fff;
+}
+
 .note-action-btn {
     display: flex;
     align-items: center;
@@ -201,13 +245,13 @@
     border: 1px solid #E5E7EB;
     border-radius: 8px;
     background: #FAFAFA;
-    min-height: 400px;
+    min-height: 800px;
     position: relative;
 }
 
 .note-content-textarea {
     width: 100%;
-    height: 400px;
+    height: 800px;
     padding: 1rem;
     border: none;
     border-radius: 8px;
@@ -218,7 +262,7 @@
     outline: none;
     background: white;
     color: #1F2937;
-    min-height: 400px;
+    min-height: 800px;
 }
 
     .note-content-textarea:focus {
@@ -227,9 +271,88 @@
 
 .note-content-display {
     padding: 1rem;
-    min-height: 400px;
+    min-height: 800px;
     background: white;
     border-radius: 8px;
+}
+
+.note-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+}
+
+.note-confirm-modal {
+    width: min(440px, 100%);
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+    padding: 1.25rem;
+}
+
+.note-confirm-header,
+.note-confirm-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.note-confirm-header h3 {
+    margin: 0;
+    color: #18230f;
+}
+
+.note-confirm-header button {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.note-confirm-modal p {
+    color: #374151;
+    line-height: 1.5;
+}
+
+.note-confirm-actions {
+    justify-content: flex-end;
+    margin-top: 1.25rem;
+}
+
+.note-confirm-cancel,
+.note-confirm-danger {
+    border: 0;
+    border-radius: 8px;
+    padding: 0.65rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.note-confirm-cancel {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.note-confirm-danger {
+    background: #dc2626;
+    color: #fff;
+}
+
+.note-confirm-danger:hover {
+    background: #b91c1c;
+}
+
+.note-confirm-cancel:disabled,
+.note-confirm-danger:disabled,
+.note-confirm-header button:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
 }
 
 .note-content-text {
