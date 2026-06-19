@@ -325,3 +325,347 @@
     .preview-toggle-button:hover {
         background-color: #0056b3;
     }
+
+.collaboration-workspace {
+    flex: 1;
+    padding: 32px 48px;
+    min-width: 0;
+}
+
+.collaboration-back-btn {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #18230f;
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin-bottom: 18px;
+    font-weight: 700;
+}
+
+.collaboration-back-btn:hover {
+    background: #f9fafb;
+}
+
+.collaboration-hero,
+.collaboration-members-panel,
+.collaboration-notes-panel,
+.collaboration-error-card {
+    background: #fff;
+    border: 1px solid #e7eadf;
+    border-radius: 8px;
+}
+
+.collaboration-hero {
+    padding: 26px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.collaboration-folder-hero {
+    padding: 22px 24px;
+}
+
+.collaboration-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #118b50;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.collaboration-hero h1 {
+    color: #18230f;
+    margin: 0;
+    font-size: 2rem;
+}
+
+.collaboration-hero p {
+    color: #64748b;
+    margin: 8px 0 0;
+}
+
+.collaboration-hero-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.collaboration-role-badge {
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.collaboration-layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 22px;
+}
+
+.collaboration-members-panel,
+.collaboration-notes-panel {
+    padding: 22px;
+    align-self: start;
+}
+
+.collaboration-members-panel h2,
+.collaboration-notes-panel h2 {
+    color: #18230f;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.collaboration-panel-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.collaboration-panel-title button {
+    border: 1px solid #d1d5db;
+    background: #fff;
+    color: #18230f;
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.collaboration-panel-title button:hover {
+    background: #f9fafb;
+}
+
+.collaboration-member-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.collaboration-member-row {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: center;
+}
+
+.collaboration-member-row strong,
+.collaboration-member-row span {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.collaboration-member-row strong {
+    color: #18230f;
+    font-size: 0.9rem;
+}
+
+.collaboration-member-row span {
+    color: #64748b;
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+
+.collaboration-member-row small {
+    background: #f1f5f1;
+    color: #118b50;
+    border-radius: 6px;
+    padding: 0.25rem 0.55rem;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+.collaboration-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.collaboration-section-header p {
+    color: #64748b;
+    margin: 5px 0 0;
+}
+
+.collaboration-empty-state {
+    min-height: 220px;
+    align-content: center;
+}
+
+.collaboration-empty-state svg {
+    color: #5db996;
+}
+
+.collaboration-error-card {
+    max-width: 560px;
+    padding: 2rem;
+}
+
+.collaboration-error-card h2 {
+    color: #18230f;
+    margin: 0 0 0.6rem;
+}
+
+.collaboration-error-card p {
+    color: #64748b;
+    margin-bottom: 1.25rem;
+}
+
+.note-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 1000;
+}
+
+.note-share-modal {
+    width: min(720px, 100%);
+    max-height: min(780px, calc(100vh - 2rem));
+    overflow: auto;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.18);
+    padding: 1.25rem;
+}
+
+.note-confirm-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.note-confirm-header h3 {
+    margin: 0;
+    color: #18230f;
+}
+
+.note-confirm-header button {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.note-modal-subtitle {
+    margin: 0.35rem 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.collaboration-settings-modal .collaborators-section {
+    padding: 0;
+    margin-top: 1rem;
+}
+
+.collaboration-settings-modal {
+    width: min(620px, 100%);
+    border-color: #e7eadf;
+}
+
+.collaboration-settings-modal .collaborators-header {
+    margin-bottom: 0.85rem;
+}
+
+.collaboration-settings-modal .collaborators-header h4 {
+    color: #18230f;
+    font-weight: 800;
+}
+
+.collaboration-settings-modal .add-collaborator-btn,
+.collaboration-settings-modal .btn-primary {
+    background: #5db996;
+    border-radius: 8px;
+    font-weight: 800;
+}
+
+.collaboration-settings-modal .add-collaborator-btn:hover,
+.collaboration-settings-modal .btn-primary:hover {
+    background: #118b50;
+}
+
+.collaboration-settings-modal .add-collaborator-form,
+.collaboration-settings-modal .permissions-info,
+.collaboration-settings-modal .no-collaborators {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.collaboration-settings-modal .collaborator-email-input {
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+}
+
+.collaboration-settings-modal .role-select {
+    border-radius: 8px;
+}
+
+.collaboration-settings-modal .collaborator-item {
+    border-radius: 8px;
+}
+
+.collaboration-settings-modal .remove-collaborator-btn {
+    border-radius: 8px;
+}
+
+.collaboration-settings-modal .btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 8px;
+}
+
+.collaboration-owner-role {
+    display: inline-flex;
+    align-items: center;
+    color: #118b50;
+    font-weight: 800;
+    min-height: 34px;
+}
+
+@media (max-width: 1000px) {
+    .collaboration-workspace {
+        padding: 20px;
+    }
+
+    .collaboration-hero,
+    .collaboration-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .collaboration-hero {
+        flex-direction: column;
+    }
+
+    .collaboration-hero-actions {
+        justify-content: flex-start;
+    }
+}

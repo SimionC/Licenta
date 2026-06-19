@@ -59,7 +59,7 @@ namespace App.Server.Controllers
 
             var query = _context.Notes
                 .Include(n => n.Folder)
-                .Where(n => n.UserId == userId.Value);
+                .Where(n => n.UserId == userId.Value && n.CollaborationId == null);
 
             if (folderId != null)
                 query = query.Where(n => n.FolderId == folderId.Value);
@@ -111,7 +111,7 @@ namespace App.Server.Controllers
 
         //Trigger: GET api/Notes/accessible-notes.
         //Guards: Requires current user id.
-        //Actions: Combines own notes + collaboration notes + directly shared notes.
+        //Actions: Combines own notes + all collaboration notes user can access + directly shared notes.
         //Result: Aggregated accessible list.
         [HttpGet("accessible-notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetAccessibleNotes()
@@ -122,7 +122,6 @@ namespace App.Server.Controllers
                 return Unauthorized();
             }
 
-            // Get user's collaborations
             var userCollaborationIds = await _context.CollaborationMembers
                 .Where(cm => cm.UserId == userId.Value)
                 .Select(cm => cm.CollaborationId)
@@ -134,30 +133,39 @@ namespace App.Server.Controllers
                 .ToListAsync();
 
             var notes = await _context.Notes
+                .Include(n => n.User)
+                .Include(n => n.Folder)
                 .Where(n =>
-                    // User's own notes
-                    n.UserId == userId.Value ||
-                    // Notes in collaborations user is part of
+                    (n.UserId == userId.Value && n.CollaborationId == null) ||
                     (n.CollaborationId != null && userCollaborationIds.Contains(n.CollaborationId.Value)) ||
-                    // Personal notes directly shared with the user
                     (n.CollaborationId == null && directSharedNoteIds.Contains(n.Id))
                 )
                 .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
-                .Select(n => new NoteModel
-                {
-                    Id = n.Id,
-                    Title = n.Title,
-                    Content = n.Text,
-                    CreatedAt = n.CreationDate,
-                    UpdatedAt = n.ModifyDate,
-                    UserId = n.UserId,
-                    IsPublic = false,
-                    CollaborationId = n.CollaborationId,
-                    Guid = n.Guid
-                })
                 .ToListAsync();
 
-            return Ok(notes);
+            var collaborationRoles = await _context.CollaborationMembers
+                .Where(cm => cm.UserId == userId.Value)
+                .ToDictionaryAsync(cm => cm.CollaborationId, cm => cm.Role);
+
+            var directSharedRoles = await _context.NotePermissions
+                .Where(p => p.UserId == userId.Value && p.Status == "accepted")
+                .ToDictionaryAsync(p => p.NoteId, p => p.Role);
+
+            return Ok(notes.Select(note =>
+            {
+                if (note.CollaborationId != null && collaborationRoles.TryGetValue(note.CollaborationId.Value, out var collaborationRole))
+                {
+                    return MapNote(note, collaborationRole, IsCollaborationEditorRole(collaborationRole), false);
+                }
+
+                if (note.UserId == userId.Value)
+                {
+                    return MapNote(note);
+                }
+
+                var role = directSharedRoles.TryGetValue(note.Id, out var directRole) ? directRole : "viewer";
+                return MapNote(note, role, role == "editor", false);
+            }));
         }
 
 
@@ -188,8 +196,22 @@ namespace App.Server.Controllers
             bool canEdit = false;
             bool canManageSharing = false;
 
-            // Owner can always access
-            if (note.UserId == currentUserId)
+            // Collaboration notes are governed by collaboration membership, not personal ownership.
+            if (note.CollaborationId != null && currentUserId != null)
+            {
+                var collaborationMember = await _context.CollaborationMembers
+                    .FirstOrDefaultAsync(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == currentUserId.Value);
+
+                if (collaborationMember != null)
+                {
+                    canAccess = true;
+                    userRole = collaborationMember.Role;
+                    canEdit = IsCollaborationEditorRole(collaborationMember.Role);
+                    canManageSharing = false;
+                }
+            }
+            // Owner can always access personal notes
+            else if (note.UserId == currentUserId)
             {
                 canAccess = true;
                 userRole = "owner";
@@ -212,20 +234,6 @@ namespace App.Server.Controllers
                     canEdit = permission.Role == "editor";
                 }
             }
-            // Check if user is part of the collaboration
-            if (!canAccess && note.CollaborationId != null && currentUserId != null)
-            {
-                var collaborationMember = await _context.CollaborationMembers
-                    .FirstOrDefaultAsync(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == currentUserId.Value);
-
-                if (collaborationMember != null)
-                {
-                    canAccess = true;
-                    userRole = collaborationMember.Role;
-                    canEdit = collaborationMember.Role == "owner" || collaborationMember.Role == "editor";
-                }
-            }
-
             if (!canAccess)
             {
                 return Forbid();
@@ -369,15 +377,22 @@ namespace App.Server.Controllers
                 return Unauthorized();
             }
 
-            // If collaboration is specified, check if user is a member
+            // If collaboration is specified, check if user can create inside it
             if (noteModel.CollaborationId != null)
             {
-                var isMember = await _context.CollaborationMembers
-                    .AnyAsync(cm => cm.CollaborationId == noteModel.CollaborationId && cm.UserId == userId.Value);
+                var memberRole = await _context.CollaborationMembers
+                    .Where(cm => cm.CollaborationId == noteModel.CollaborationId && cm.UserId == userId.Value)
+                    .Select(cm => cm.Role)
+                    .FirstOrDefaultAsync();
 
-                if (!isMember)
+                if (memberRole == null)
                 {
                     return Forbid("You are not a member of this collaboration");
+                }
+
+                if (!IsCollaborationEditorRole(memberRole))
+                {
+                    return Forbid("You do not have permission to create notes in this collaboration");
                 }
             }
             else if (noteModel.FolderId != null && !await UserOwnsFolder(userId.Value, noteModel.FolderId.Value))
@@ -424,18 +439,26 @@ namespace App.Server.Controllers
                 return NotFound();
             }
 
-            // Check if user can edit this note
             bool canEdit = false;
-            bool isOwner = note.UserId == userId.Value;
+            bool isOwner = note.UserId == userId.Value && note.CollaborationId == null;
             bool isDirectSharedEditor = false;
+            string? collaborationRole = null;
 
-            // Owner can always edit
-            if (isOwner)
+            if (note.CollaborationId != null)
+            {
+                collaborationRole = await _context.CollaborationMembers
+                    .Where(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == userId.Value)
+                    .Select(cm => cm.Role)
+                    .FirstOrDefaultAsync();
+
+                canEdit = IsCollaborationEditorRole(collaborationRole);
+            }
+            else if (isOwner)
             {
                 canEdit = true;
             }
             // Direct shared editors can only edit personal note title/content
-            else if (note.CollaborationId == null)
+            else
             {
                 isDirectSharedEditor = await _context.NotePermissions
                     .AnyAsync(p =>
@@ -445,16 +468,6 @@ namespace App.Server.Controllers
                         p.Role == "editor");
 
                 canEdit = isDirectSharedEditor;
-            }
-            // Check if user is part of the collaboration with edit permissions
-            else if (note.CollaborationId != null)
-            {
-                var memberRole = await _context.CollaborationMembers
-                    .Where(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == userId.Value)
-                    .Select(cm => cm.Role)
-                    .FirstOrDefaultAsync();
-
-                canEdit = memberRole == "owner" || memberRole == "editor";
             }
 
             if (!canEdit)
@@ -467,22 +480,20 @@ namespace App.Server.Controllers
             note.Text = noteModel.Content ?? note.Text;
             note.ModifyDate = DateTime.UtcNow;
 
-            // Only the owner can change visibility, collaboration linkage, and personal folder placement.
-            if (isOwner)
+            if (note.CollaborationId != null)
             {
                 note.VisibilityTypeId = 1;
-                note.CollaborationId = noteModel.CollaborationId;
-                if (note.CollaborationId == null)
-                {
-                    if (noteModel.FolderId != null && !await UserOwnsFolder(userId.Value, noteModel.FolderId.Value))
-                        return Forbid("You cannot use a folder owned by another user");
+                note.FolderId = null;
+            }
+            // Only the owner can change visibility and personal folder placement for personal notes.
+            else if (isOwner)
+            {
+                note.VisibilityTypeId = 1;
+                note.CollaborationId = null;
+                if (noteModel.FolderId != null && !await UserOwnsFolder(userId.Value, noteModel.FolderId.Value))
+                    return Forbid("You cannot use a folder owned by another user");
 
-                    note.FolderId = noteModel.FolderId;
-                }
-                else
-                {
-                    note.FolderId = null;
-                }
+                note.FolderId = noteModel.FolderId;
             }
 
             _context.Entry(note).State = EntityState.Modified;
@@ -493,7 +504,7 @@ namespace App.Server.Controllers
 
             return Ok(MapNote(
                 note,
-                isOwner ? "owner" : isDirectSharedEditor ? "editor" : "editor",
+                note.CollaborationId != null ? collaborationRole ?? "editor" : isOwner ? "owner" : isDirectSharedEditor ? "editor" : "editor",
                 true,
                 isOwner
             ));
@@ -518,8 +529,20 @@ namespace App.Server.Controllers
                 return NotFound();
             }
 
-            // Only owner can delete notes
-            if (note.UserId != userId.Value)
+            if (note.CollaborationId != null)
+            {
+                var memberRole = await _context.CollaborationMembers
+                    .Where(cm => cm.CollaborationId == note.CollaborationId && cm.UserId == userId.Value)
+                    .Select(cm => cm.Role)
+                    .FirstOrDefaultAsync();
+
+                if (!IsCollaborationEditorRole(memberRole))
+                {
+                    return Forbid("You do not have permission to delete notes in this collaboration");
+                }
+            }
+            // Only owner can delete personal notes
+            else if (note.UserId != userId.Value)
             {
                 return Forbid("Only the note owner can delete this note");
             }
@@ -529,39 +552,6 @@ namespace App.Server.Controllers
 
             return NoContent();
         }
-
-
-        //Trigger: GET api/Notes/collaboration/{id}.
-        //Guards: User must be member of collaboration.
-        //Actions: Reads all notes linked to collaboration.
-        //Result: Collaboration note list.
-        [HttpGet("collaboration/{collaborationId}")]
-        public async Task<ActionResult<IEnumerable<NoteModel>>> GetCollaborationNotes(int collaborationId)
-        {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                return Unauthorized();
-            }
-
-            // Check if user is part of the collaboration
-            var isMember = await _context.CollaborationMembers
-                .AnyAsync(cm => cm.CollaborationId == collaborationId && cm.UserId == userId.Value);
-
-            if (!isMember)
-            {
-                return Forbid("You are not a member of this collaboration");
-            }
-
-            var notes = await _context.Notes
-                .Where(n => n.CollaborationId == collaborationId)
-                .Include(n => n.Folder)
-                .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
-                .ToListAsync();
-
-            return Ok(notes.Select(note => MapNote(note)));
-        }
-
 
         //Trigger: GET api/Notes/my-collaborations-with-notes.
         //Guards: Requires user id.
@@ -648,6 +638,11 @@ namespace App.Server.Controllers
         {
             var normalized = role?.Trim().ToLowerInvariant();
             return normalized == "viewer" || normalized == "editor" ? normalized : null;
+        }
+
+        private static bool IsCollaborationEditorRole(string? role)
+        {
+            return role == "owner" || role == "editor";
         }
 
         private static NoteModel MapNote(

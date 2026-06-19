@@ -1,52 +1,202 @@
-﻿import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, FileText, Plus, Settings, Shield, Users, X } from 'lucide-react';
+import Sidebar from '../components/Sidebar';
+import NotesNoteCard from '../components/NotesNoteCard';
+import CollaboratorsSection from '../components/CollaboratorsSection';
+import '../components/NotesNoteCard.css';
+import './CollaborationStyles.css';
 
 /**
- * Purpose: Collaboration detail reader and note list navigator.
- * API touched: GET /api/Collaborations/{collabId}.
- * Output contract: renders collaboration metadata and links to collaboration-note editor route.
+ * Purpose: Collaboration workspace page with member context and contained notes.
+ * API touched: GET /api/Collaborations/{collabId}, GET /api/Collaborations/{collabId}/notes.
+ * Output contract: opens collaboration notes at /collaborations/{collabId}/notes/{noteGuid}.
  */
 
 export default function CollaborationDetailPage() {
     const { collabId } = useParams();
+    const navigate = useNavigate();
     const [collab, setCollab] = useState(null);
+    const [notes, setNotes] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [settingsOpen, setSettingsOpen] = useState(false);
+
+    const loadWorkspace = async () => {
+        setLoading(true);
+        setError('');
+
+        try {
+            const [collabRes, notesRes] = await Promise.all([
+                fetch(`/api/Collaborations/${collabId}`, { credentials: 'include' }),
+                fetch(`/api/Collaborations/${collabId}/notes`, { credentials: 'include' })
+            ]);
+
+            if (collabRes.status === 403) throw new Error('You no longer have access to this collaboration.');
+            if (collabRes.status === 404) throw new Error('This collaboration no longer exists.');
+            if (!collabRes.ok) throw new Error('Failed to load collaboration.');
+            if (!notesRes.ok) throw new Error('Failed to load collaboration notes.');
+
+            setCollab(await collabRes.json());
+            const notesData = await notesRes.json();
+            setNotes(Array.isArray(notesData) ? notesData : []);
+        } catch (err) {
+            setError(err.message || 'Could not load collaboration workspace.');
+            setCollab(null);
+            setNotes([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        Promise.all([
-            fetch(`/api/Collaborations/${collabId}`, { credentials: 'include' }),
-            fetch(`/api/Notes/collaboration/${collabId}`, { credentials: 'include' })
-        ])
-            .then(async ([collabRes, notesRes]) => {
-                if (!collabRes.ok) throw new Error('Failed to load collaboration');
-
-                const collabData = await collabRes.json();
-                const notesData = notesRes.ok ? await notesRes.json() : [];
-
-                setCollab({
-                    ...collabData,
-                    notes: Array.isArray(notesData) ? notesData : []
-                });
-            })
-            .catch(() => setCollab(null));
+        loadWorkspace();
     }, [collabId]);
 
-    if (!collab) return <div>Loading…</div>;
+    const canCreateNotes = useMemo(() => {
+        return collab?.myRole === 'owner' || collab?.myRole === 'editor';
+    }, [collab?.myRole]);
+
+    const canManageMembers = collab?.myRole === 'owner';
+    const roleLabel = collab?.myRole || 'viewer';
 
     return (
-        <div className="collaboration-detail">
-            <h1>📒 {collab.name}</h1>
-            <section>
-                <h2>Notes</h2>
-                <ul>
-                    {collab.notes?.map(n => (
-                        <li key={n.guid}>
-                            <Link to={`/collaborations/${collabId}/notes/${n.guid}`}>
-                                {n.title || 'Untitled'}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            </section>
+        <div className="notes-page">
+            <Sidebar />
+            <main className="collaboration-workspace">
+                <button className="collaboration-back-btn" onClick={() => navigate('/notes')}>
+                    <ArrowLeft size={18} />
+                    Back to notes
+                </button>
+
+                {loading ? (
+                    <div className="notes-empty-state">Loading collaboration...</div>
+                ) : error ? (
+                    <div className="collaboration-error-card">
+                        <h2>Workspace unavailable</h2>
+                        <p>{error}</p>
+                        <button className="notes-btn" onClick={() => navigate('/notes')}>
+                            Back to notes
+                        </button>
+                    </div>
+                ) : (
+                    <>
+                        <section className="collaboration-hero collaboration-folder-hero">
+                            <div>
+                                <div className="collaboration-eyebrow">
+                                    <Users size={17} />
+                                    Shared workspace
+                                </div>
+                                <h1>{collab.name}</h1>
+                                <p>
+                                    {notes.length} note{notes.length === 1 ? '' : 's'} · {collab.members?.length || 0} member{collab.members?.length === 1 ? '' : 's'}
+                                </p>
+                            </div>
+                            <div className="collaboration-hero-actions">
+                                <span className="collaboration-role-badge">
+                                    <Shield size={15} />
+                                    {roleLabel}
+                                </span>
+                                {canCreateNotes && (
+                                    <button
+                                        className="notes-btn"
+                                        onClick={() => navigate(`/collaborations/${collabId}/notes/new`)}
+                                    >
+                                        <Plus size={16} />
+                                        New note
+                                    </button>
+                                )}
+                            </div>
+                        </section>
+
+                        <div className="collaboration-layout">
+                            <aside className="collaboration-members-panel">
+                                <div className="collaboration-panel-title">
+                                    <h2>Members</h2>
+                                    <button onClick={() => setSettingsOpen(true)} title="Workspace settings">
+                                        <Settings size={15} />
+                                    </button>
+                                </div>
+                                <div className="collaboration-member-list">
+                                    {collab.members?.map(member => (
+                                        <div className="collaboration-member-row" key={member.id}>
+                                            <div>
+                                                <strong>{member.email}</strong>
+                                                {member.isOwner && <span>Workspace owner</span>}
+                                            </div>
+                                            <small>{member.role}</small>
+                                        </div>
+                                    ))}
+                                </div>
+                            </aside>
+
+                            <section className="collaboration-notes-panel">
+                                {notes.length === 0 ? (
+                                    <div className="notes-empty-state collaboration-empty-state">
+                                        <FileText size={24} />
+                                        <p>No notes inside this collaboration yet.</p>
+                                        {canCreateNotes && (
+                                            <button
+                                                className="notes-btn"
+                                                onClick={() => navigate(`/collaborations/${collabId}/notes/new`)}
+                                            >
+                                                <Plus size={16} />
+                                                Create first note
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="notes-grid">
+                                        {notes.map(note => (
+                                            <div
+                                                key={note.guid}
+                                                onClick={() => navigate(`/collaborations/${collabId}/notes/${note.guid}`)}
+                                            >
+                                                <NotesNoteCard
+                                                    note={{
+                                                        id: note.id,
+                                                        title: note.title || 'Untitled Note',
+                                                        tag: note.canEdit ? 'Can edit' : 'View only',
+                                                        desc: (note.content || '').substring(0, 140) + ((note.content || '').length > 140 ? '...' : ''),
+                                                        date: new Date(note.updatedAt || note.createdAt).toLocaleDateString(),
+                                                        folderName: collab.name
+                                                    }}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        </div>
+
+                        {settingsOpen && (
+                            <div className="note-modal-overlay">
+                                <div className="note-share-modal collaboration-settings-modal">
+                                    <div className="note-confirm-header">
+                                        <div>
+                                            <h3>Workspace settings</h3>
+                                            <p className="note-modal-subtitle">
+                                                {canManageMembers
+                                                    ? 'Manage member access for this collaboration.'
+                                                    : 'View the members who can access this collaboration.'}
+                                            </p>
+                                        </div>
+                                        <button onClick={() => setSettingsOpen(false)}>
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    <CollaboratorsSection
+                                        collaborationId={Number(collabId)}
+                                        collaborators={collab.members || []}
+                                        setCollaborators={(members) => setCollab(prev => ({ ...prev, members }))}
+                                        parentIsEditing={canManageMembers}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </main>
         </div>
     );
 }

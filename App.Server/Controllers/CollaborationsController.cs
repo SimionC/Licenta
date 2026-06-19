@@ -70,10 +70,10 @@ namespace App.Server.Controllers
             }
 
             // Check if user is member of this collaboration
-            var isMember = await _context.CollaborationMembers
-                .AnyAsync(cm => cm.CollaborationId == id && cm.UserId == userId.Value);
+            var currentMember = await _context.CollaborationMembers
+                .FirstOrDefaultAsync(cm => cm.CollaborationId == id && cm.UserId == userId.Value);
 
-            if (!isMember)
+            if (currentMember == null)
             {
                 return Forbid();
             }
@@ -105,16 +105,99 @@ namespace App.Server.Controllers
                 Name = collaboration.Name,
                 CreatedAt = collaboration.CreatedAt,
                 CreatedBy = collaboration.User.Email,
+                MyRole = currentMember.Role,
                 Members = members
             };
 
             return Ok(collaborationDetail);
         }
 
+        //Trigger: GET api/Collaborations/{id}/notes.
+        //Guards: Current user must be a collaboration member.
+        //Actions: Returns notes contained in the collaboration with role-aware access flags.
+        [HttpGet("{id}/notes")]
+        public async Task<ActionResult<IEnumerable<NoteModel>>> GetCollaborationNotes(int id)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var memberRole = await _context.CollaborationMembers
+                .Where(cm => cm.CollaborationId == id && cm.UserId == userId.Value)
+                .Select(cm => cm.Role)
+                .FirstOrDefaultAsync();
+
+            if (memberRole == null)
+            {
+                return Forbid();
+            }
+
+            var notes = await _context.Notes
+                .Where(n => n.CollaborationId == id)
+                .OrderByDescending(n => n.ModifyDate ?? n.CreationDate)
+                .ToListAsync();
+
+            return Ok(notes.Select(note => MapCollaborationNote(note, memberRole)));
+        }
+
+        //Trigger: POST api/Collaborations/{id}/notes.
+        //Guards: Current user must be owner/editor in the collaboration.
+        //Actions: Creates an internal collaboration note that is not assigned to personal folders.
+        [HttpPost("{id}/notes")]
+        public async Task<ActionResult<NoteModel>> CreateCollaborationNote(int id, NoteModel model)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var memberRole = await _context.CollaborationMembers
+                .Where(cm => cm.CollaborationId == id && cm.UserId == userId.Value)
+                .Select(cm => cm.Role)
+                .FirstOrDefaultAsync();
+
+            if (memberRole == null)
+            {
+                return Forbid();
+            }
+
+            if (!IsCollaborationEditorRole(memberRole))
+            {
+                return Forbid("You do not have permission to create notes in this collaboration");
+            }
+
+            var collaborationExists = await _context.Collaborations.AnyAsync(c => c.Id == id);
+            if (!collaborationExists)
+            {
+                return NotFound();
+            }
+
+            var note = new Note
+            {
+                Title = string.IsNullOrWhiteSpace(model.Title) ? "Untitled Note" : model.Title,
+                Guid = Guid.NewGuid().ToString(),
+                Text = model.Content ?? string.Empty,
+                CreationDate = DateTime.UtcNow,
+                ModifyDate = DateTime.UtcNow,
+                UserId = userId.Value,
+                VisibilityTypeId = 1,
+                CollaborationId = id,
+                FolderId = null
+            };
+
+            _context.Notes.Add(note);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(NotesController.GetNote), "Notes", new { guid = note.Guid }, MapCollaborationNote(note, memberRole));
+        }
+
         
         //Trigger: POST api/Collaborations/create.
         //Guards: Requires auth user id.
-        //Actions: Creates collaboration, adds creator as owner, adds invited users as editors.
+        //Actions: Creates collaboration, adds creator as owner, optionally adds invited users.
         //Result: 201 Created with summary model.
         [HttpPost("create")]
         public async Task<ActionResult<CollaborationModel>> CreateCollaboration(CreateCollaborationModel model)
@@ -125,10 +208,72 @@ namespace App.Server.Controllers
                 return Unauthorized();
             }
 
+            var name = model.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return BadRequest("Collaboration name is required");
+            }
+
+            var requestedMembers = model.Members?.Any() == true
+                ? model.Members
+                : (model.MemberEmails ?? new List<string>()).Select(email => new CreateCollaborationMemberModel
+                {
+                    Email = email,
+                    Role = "editor"
+                }).ToList();
+
+            var normalizedMembers = new List<CreateCollaborationMemberModel>();
+            var seenEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var requestedMember in requestedMembers)
+            {
+                var email = requestedMember.Email?.Trim().ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    return BadRequest("Collaborator email is required");
+                }
+
+                var role = NormalizeMemberRole(requestedMember.Role ?? "viewer", allowOwner: false);
+                if (role == null)
+                {
+                    return BadRequest("Collaborator role must be viewer or editor");
+                }
+
+                if (seenEmails.Add(email))
+                {
+                    normalizedMembers.Add(new CreateCollaborationMemberModel
+                    {
+                        Email = email,
+                        Role = role
+                    });
+                }
+            }
+
+            var currentUserEmail = await _context.Users
+                .Where(u => u.Id == userId.Value)
+                .Select(u => u.Email)
+                .FirstOrDefaultAsync();
+
+            if (currentUserEmail != null && normalizedMembers.Any(m => m.Email.Equals(currentUserEmail, StringComparison.OrdinalIgnoreCase)))
+            {
+                return BadRequest("You are already the owner of this collaboration");
+            }
+
+            var memberEmails = normalizedMembers.Select(m => m.Email).ToList();
+            var usersByEmail = await _context.Users
+                .Where(u => memberEmails.Contains(u.Email.ToLower()))
+                .ToDictionaryAsync(u => u.Email.ToLower());
+
+            var missingEmails = memberEmails.Where(email => !usersByEmail.ContainsKey(email)).ToList();
+            if (missingEmails.Any())
+            {
+                return BadRequest($"No registered user was found for: {string.Join(", ", missingEmails)}");
+            }
+
             // Create the collaboration
             var collaboration = new Collaboration
             {
-                Name = model.Name,
+                Name = name,
                 UserId = userId.Value,
                 CreatedAt = DateTime.UtcNow
             };
@@ -146,16 +291,16 @@ namespace App.Server.Controllers
             _context.CollaborationMembers.Add(ownerMember);
 
             // Add invited members
-            foreach (var email in model.MemberEmails)
+            foreach (var requestedMember in normalizedMembers)
             {
-                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
-                if (user != null && user.Id != userId.Value) // Don't add creator twice
+                var user = usersByEmail[requestedMember.Email];
+                if (user.Id != userId.Value)
                 {
                     var member = new CollaborationMember
                     {
                         CollaborationId = collaboration.Id,
                         UserId = user.Id,
-                        Role = "editor"
+                        Role = requestedMember.Role
                     };
                     _context.CollaborationMembers.Add(member);
                 }
@@ -168,9 +313,9 @@ namespace App.Server.Controllers
                 Id = collaboration.Id,
                 Name = collaboration.Name,
                 CreatedAt = collaboration.CreatedAt,
-                CreatedBy = User.Identity?.Name ?? string.Empty,
+                CreatedBy = currentUserEmail ?? User.Identity?.Name ?? string.Empty,
                 MyRole = "owner",
-                MemberCount = model.MemberEmails.Count + 1
+                MemberCount = normalizedMembers.Count + 1
             };
 
             return CreatedAtAction(nameof(GetCollaboration), new { id = collaboration.Id }, collaborationModel);
@@ -211,7 +356,13 @@ namespace App.Server.Controllers
                 return BadRequest("Cannot change owner role");
             }
 
-            member.Role = model.Role;
+            var role = NormalizeMemberRole(model.Role, allowOwner: false);
+            if (role == null)
+            {
+                return BadRequest("Role must be viewer or editor");
+            }
+
+            member.Role = role;
             await _context.SaveChangesAsync();
 
             return Ok();
@@ -282,10 +433,15 @@ namespace App.Server.Controllers
             if (collab.UserId != userId.Value)
                 return Forbid();
             
-            // 3️. delete all member records for that collaboration
+            // 3️. delete only notes and member records that belong to this collaboration
+            var notes = _context.Notes
+                .Where(n => n.CollaborationId == id);
+            _context.Notes.RemoveRange(notes);
+
             var members = _context.CollaborationMembers
                 .Where(cm => cm.CollaborationId == id);
             _context.CollaborationMembers.RemoveRange(members);
+
             // 4️. delete the collaboration itself
             _context.Collaborations.Remove(collab);
             await _context.SaveChangesAsync();
@@ -315,11 +471,17 @@ namespace App.Server.Controllers
                 return Forbid();
             }
 
+            var email = model.Email?.Trim().ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            {
+                return BadRequest("Please enter a valid email address");
+            }
+
             // Check if user exists
-            var invitedUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            var invitedUser = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == email);
             if (invitedUser == null)
             {
-                return BadRequest("User not found");
+                return BadRequest("No registered user was found with that email");
             }
 
             // Check if user is already a member
@@ -332,11 +494,17 @@ namespace App.Server.Controllers
             }
 
             // Add new member
+            var role = NormalizeMemberRole(model.Role ?? "editor", allowOwner: false);
+            if (role == null)
+            {
+                return BadRequest("Role must be viewer or editor");
+            }
+
             var newMember = new CollaborationMember
             {
                 CollaborationId = id,
                 UserId = invitedUser.Id,
-                Role = model.Role ?? "editor"
+                Role = role
             };
 
             _context.CollaborationMembers.Add(newMember);
@@ -371,6 +539,40 @@ namespace App.Server.Controllers
 
             return null;
         }
+
+        private static string? NormalizeMemberRole(string? role, bool allowOwner)
+        {
+            var normalized = role?.Trim().ToLowerInvariant();
+            if (normalized == "viewer" || normalized == "editor") return normalized;
+            if (allowOwner && normalized == "owner") return normalized;
+            return null;
+        }
+
+        private static bool IsCollaborationEditorRole(string? role)
+        {
+            return role == "owner" || role == "editor";
+        }
+
+        private static NoteModel MapCollaborationNote(Note note, string memberRole)
+        {
+            return new NoteModel
+            {
+                Id = note.Id,
+                Title = note.Title,
+                Content = note.Text,
+                CreatedAt = note.CreationDate,
+                UpdatedAt = note.ModifyDate,
+                UserId = note.UserId,
+                IsPublic = false,
+                CollaborationId = note.CollaborationId,
+                FolderId = null,
+                FolderName = null,
+                AccessRole = memberRole,
+                CanEdit = IsCollaborationEditorRole(memberRole),
+                CanManageSharing = false,
+                Guid = note.Guid
+            };
+        }
     }
 
     // Models
@@ -390,6 +592,7 @@ namespace App.Server.Controllers
         public string Name { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public string CreatedBy { get; set; } = string.Empty;
+        public string MyRole { get; set; } = string.Empty;
         public List<CollaborationMemberModel> Members { get; set; } = new();
     }
 
@@ -405,6 +608,13 @@ namespace App.Server.Controllers
     {
         public string Name { get; set; } = string.Empty;
         public List<string> MemberEmails { get; set; } = new();
+        public List<CreateCollaborationMemberModel> Members { get; set; } = new();
+    }
+
+    public class CreateCollaborationMemberModel
+    {
+        public string Email { get; set; } = string.Empty;
+        public string Role { get; set; } = "viewer";
     }
 
     public class UpdateMemberRoleModel

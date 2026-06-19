@@ -65,6 +65,24 @@
     background-clip: text;
 }
 
+.note-collaboration-context {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.note-collaboration-context strong {
+    color: #166534;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 2px 7px;
+    text-transform: capitalize;
+}
+
 .note-title-input {
     width: 100%;
     font-size: 1.5rem;

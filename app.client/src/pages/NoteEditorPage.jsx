@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Eye, X, Share2, Folder, UserPlus, Trash2 } from 'lucid
 import Sidebar from '../components/Sidebar';
 import CollaboratorsSection from '../components/CollaboratorsSection'
 import './NoteEditorPage.css';
+import './CollaborationStyles.css';
 
 //for markdown editor
 import ReactMarkdown from 'react-markdown';
@@ -22,10 +23,12 @@ import 'highlight.js/styles/github.css'
  */
 
 const NoteEditorPage = () => {
-    const { noteGuid } = useParams();
+    const { noteGuid, collabId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const routeCollaborationId = collabId ? Number(collabId) : null;
     const [note, setNote] = useState(null);
+    const [collaboration, setCollaboration] = useState(null);
     const [title, setTitle] = useState('Untitled Note');
     const [content, setContent] = useState('# Welcome to your new note\n\nStart writing here...');
     const [isEditing, setIsEditing] = useState(false); // Controls editing for title, content, and collaboration
@@ -58,17 +61,41 @@ const NoteEditorPage = () => {
 
         // fetchNote effect: initializes editor for new note or loads existing note + members.
         const fetchNote = async () => {
+            setFetchError('');
             if (!noteGuid) {
                 const params = new URLSearchParams(location.search);
-                // This means it's a brand new note creation (e.g., /notes/new)
+                if (routeCollaborationId) {
+                    const collabRes = await fetch(`/api/Collaborations/${routeCollaborationId}`, {
+                        credentials: 'include'
+                    });
+
+                    if (!collabRes.ok) {
+                        setFetchError('This collaboration is no longer available, or you no longer have access to it.');
+                        return;
+                    }
+
+                    const collabData = await collabRes.json();
+                    const role = collabData.myRole || 'viewer';
+                    if (role !== 'owner' && role !== 'editor') {
+                        setFetchError('You have view-only access to this collaboration, so you cannot create notes in it.');
+                        return;
+                    }
+
+                    setCollaboration(collabData);
+                    setMembers(collabData.members || []);
+                } else {
+                    setCollaboration(null);
+                    setMembers([]);
+                }
+
+                // This means it's a brand new note creation (e.g., /notes/new or /collaborations/:id/notes/new)
                 setIsNewNote(true);
                 setIsEditing(true); // Start in editing mode for new notes
                 setIsPreviewing(false);
                 setNote(null); // Ensure note is null for new creations
-                setTitle('Untitled Note');
-                setContent('# Welcome to your new note\\n\\nStart writing here...');
-                setFolderId(params.get('folderId') || '');
-                setMembers([]); // No members for a new non-collaboration note
+                setTitle(routeCollaborationId ? 'Untitled Collaboration Note' : 'Untitled Note');
+                setContent(routeCollaborationId ? '# New collaboration note\\n\\nStart writing here...' : '# Welcome to your new note\\n\\nStart writing here...');
+                setFolderId(routeCollaborationId ? '' : (params.get('folderId') || ''));
                 setStatusMessage('');
                 setPermissions([]);
                 return;
@@ -94,6 +121,12 @@ const NoteEditorPage = () => {
                 }
 
                 const data = await response.json();
+                if (routeCollaborationId && data.collaborationId !== routeCollaborationId) {
+                    setFetchError('This note does not belong to this collaboration.');
+                    setNote(null);
+                    return;
+                }
+
                 setNote(data);
                 setTitle(data.title);
                 setContent(data.content);
@@ -116,11 +149,13 @@ const NoteEditorPage = () => {
                     });
                     if (membersRes.ok) {
                         const membersData = await membersRes.json();
+                        setCollaboration(membersData);
                         setMembers(membersData.members || []);
                     } else {
                         console.error('Failed to fetch collaboration members');
                     }
                 } else {
+                    setCollaboration(null);
                     setMembers([]); // Not a collaboration note, clear members
                 }
 
@@ -132,7 +167,7 @@ const NoteEditorPage = () => {
         };
 
         fetchNote();
-    }, [noteGuid, location.search]);
+    }, [noteGuid, location.search, routeCollaborationId]);
 
     // handleSave: builds payload, selects POST vs PUT, then syncs local state and route.
     const showStatus = (message, tone = 'success') => {
@@ -242,16 +277,17 @@ const NoteEditorPage = () => {
         setStatusMessage('');
 
         // Ensure content is not null when sending
+        const activeCollaborationId = note?.collaborationId || routeCollaborationId;
         const payload = {
             title: title,
             content: content || '', // Ensure content is not null
-            folderId: note?.collaborationId ? null : (folderId ? Number(folderId) : null),
-            // Include collaborationId in the payload ONLY if the 'note' state already has one.
-            // This preserves it on updates.
-            ...(note?.collaborationId && { collaborationId: note.collaborationId })
+            folderId: activeCollaborationId ? null : (folderId ? Number(folderId) : null),
+            ...(activeCollaborationId && { collaborationId: activeCollaborationId })
         };
 
-        const url = isNewNote ? '/api/Notes/create' : `/api/Notes/${noteGuid}`;
+        const url = isNewNote && routeCollaborationId
+            ? `/api/Collaborations/${routeCollaborationId}/notes`
+            : isNewNote ? '/api/Notes/create' : `/api/Notes/${noteGuid}`;
         const method = isNewNote ? 'POST' : 'PUT';
 
         try {
@@ -277,7 +313,11 @@ const NoteEditorPage = () => {
 
             if (isNewNote) {
                 // If it was a new note, navigate to its URL
-                navigate(`/notes/${savedNote.guid}`);
+                if (savedNote.collaborationId) {
+                    navigate(`/collaborations/${savedNote.collaborationId}/notes/${savedNote.guid}`);
+                } else {
+                    navigate(`/notes/${savedNote.guid}`);
+                }
             }
 
             showStatus('Note saved successfully.');
@@ -289,31 +329,25 @@ const NoteEditorPage = () => {
         }
     };
 
-    // handleDelete: deletes note; for collaboration notes also deletes collaboration container.
+    // handleDelete: deletes only this note. Collaboration notes leave their workspace intact.
     const handleDelete = async () => {
         if (!note || isNewNote) return;
 
         setIsDeleting(true);
         setStatusMessage('');
         try {
-            //1. delete the note
-            let response = await fetch(`/api/Notes/${noteGuid}`, {
+            const response = await fetch(`/api/Notes/${noteGuid}`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
 
             if (!response.ok) throw new Error('Failed to delete note');
 
-            // 2️.if it was a collaboration note, delete the collaboration (server will remove members)
             if (note.collaborationId) {
-                response = await fetch(
-                    `/api/Collaborations/${note.collaborationId}`,
-                    { method: 'DELETE', credentials: 'include' }
-                );
-                if (!response.ok) throw new Error('Failed to delete collaboration');
+                navigate(`/collaborations/${note.collaborationId}`);
+            } else {
+                navigate('/notes');
             }
-
-            navigate('/notes');
         } catch (error) {
             console.error('Error deleting note:', error);
             showStatus('Failed to delete note. Please try again.', 'error');
@@ -326,7 +360,7 @@ const NoteEditorPage = () => {
     // handleCancel: restores loaded values (existing) or exits to notes list (new).
     const handleCancel = () => {
         if (isNewNote) {
-            navigate('/notes');
+            navigate(routeCollaborationId ? `/collaborations/${routeCollaborationId}` : '/notes');
         } else {
             // Revert to original note details if existing note
             setTitle(note.title);
@@ -369,7 +403,10 @@ const NoteEditorPage = () => {
     const canUseOwnerControls = isNewNote || canManageSharing;
     const isDirectSharedNote = !isNewNote && !note?.collaborationId && accessRole !== 'owner';
     const canOpenSharePanel = !isNewNote && (canManageSharing || isDirectSharedNote || note?.collaborationId);
-    const canManageFolder = canUseOwnerControls && !note?.collaborationId;
+    const activeCollaborationId = note?.collaborationId || routeCollaborationId;
+    const canManageFolder = canUseOwnerControls && !activeCollaborationId;
+    const canDeleteNote = !isNewNote && (canManageSharing || (note?.collaborationId && canEditNote));
+    const backTarget = activeCollaborationId ? `/collaborations/${activeCollaborationId}` : '/notes';
     const currentFolderName = folderId
         ? folders.find(folder => String(folder.id) === String(folderId))?.name || 'Folder'
         : 'No Folder';
@@ -384,7 +421,7 @@ const NoteEditorPage = () => {
                     <div className="note-editor-header-left">
                         <button
                             className="note-back-btn"
-                            onClick={() => navigate('/notes')}
+                            onClick={() => navigate(backTarget)}
                         >
                             <ArrowLeft size={20} />
                         </button>
@@ -398,7 +435,15 @@ const NoteEditorPage = () => {
                                     placeholder="Note title"
                                 />
                             ) : (
-                                <h1 className="note-title">{title}</h1>
+                                <>
+                                    <h1 className="note-title">{title}</h1>
+                                    {note?.collaborationId && (
+                                        <div className="note-collaboration-context">
+                                            <span>{collaboration?.name || 'Collaboration workspace'}</span>
+                                            <strong>{accessRole}</strong>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>
@@ -467,7 +512,7 @@ const NoteEditorPage = () => {
                                     </button>
                                 )}
                                 {/* Only show edit/delete if not a new note, and not currently editing */}
-                                {!isNewNote && canManageSharing && (
+                                {canDeleteNote && (
                                     <>
                                         <button
                                             className="note-action-btn delete-btn"
@@ -555,7 +600,9 @@ const NoteEditorPage = () => {
                             </button>
                         </div>
                         <p>
-                            Are you sure you want to permanently delete <strong>{title}</strong>? This cannot be undone.
+                            {note?.collaborationId
+                                ? <>Remove <strong>{title}</strong> from this collaboration? The workspace and other notes will stay available.</>
+                                : <>Are you sure you want to permanently delete <strong>{title}</strong>? This cannot be undone.</>}
                         </p>
                         <div className="note-confirm-actions">
                             <button
@@ -570,7 +617,7 @@ const NoteEditorPage = () => {
                                 onClick={handleDelete}
                                 disabled={isDeleting}
                             >
-                                {isDeleting ? 'Deleting...' : 'Delete permanently'}
+                                {isDeleting ? 'Deleting...' : note?.collaborationId ? 'Remove note' : 'Delete permanently'}
                             </button>
                         </div>
                     </div>
@@ -582,10 +629,10 @@ const NoteEditorPage = () => {
                     <div className="note-share-modal">
                         <div className="note-confirm-header">
                             <div>
-                                <h3>{note?.collaborationId ? 'Collaboration access' : 'Share note'}</h3>
+                                <h3>{note?.collaborationId ? 'Workspace members' : 'Share note'}</h3>
                                 <p className="note-modal-subtitle">
                                     {note?.collaborationId
-                                        ? 'Manage the collaboration members for this note.'
+                                        ? `Members of ${collaboration?.name || 'this collaboration'} can access notes based on their workspace role.`
                                         : canManageSharing
                                             ? 'Invite registered users and choose what they can do.'
                                             : 'This note was shared with you.'}
@@ -601,7 +648,7 @@ const NoteEditorPage = () => {
                                 collaborationId={note.collaborationId}
                                 collaborators={members}
                                 setCollaborators={setMembers}
-                                parentIsEditing={isEditing}
+                                parentIsEditing={collaboration?.myRole === 'owner'}
                             />
                         ) : canManageSharing ? (
                             <>

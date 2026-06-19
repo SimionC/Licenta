@@ -1,8 +1,8 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Plus, X, UserPlus, Mail } from 'lucide-react';
+import { Plus, X, UserPlus } from 'lucide-react';
 
 /**
- * Purpose: Reusable collaborator management UI for create mode and edit-existing mode.
+ * Purpose: Reusable collaborator management UI for workspace member viewing/management.
  * API touched (edit mode): GET /api/Collaborations/{id}, POST /invite, PATCH/DELETE /members/{memberId}.
  * Control contract: parentIsEditing is the single source of truth for mutating actions.
  */
@@ -10,8 +10,8 @@ import { Plus, X, UserPlus, Mail } from 'lucide-react';
 export default function CollaboratorsSection({
     collaborators = [],
     setCollaborators,
-    collaborationId,    // if present, we’re in “edit existing collab” mode
-    parentIsEditing     // New prop from NoteEditorPage
+    collaborationId,
+    parentIsEditing
 }) {
     const [newEmail, setNewEmail] = useState('');
     const [newRole, setNewRole] = useState('viewer');
@@ -41,30 +41,27 @@ export default function CollaboratorsSection({
         }
     };
 
-    // addCollaborator: local add in create mode OR invite endpoint in edit mode.
+    // addCollaborator: invite a registered user into an existing workspace.
     const addCollaborator = async () => {
         // Only allow adding if parent allows editing
         if (!newEmail.trim() || !parentIsEditing) return; // Ensure parentIsEditing is true
 
-        // basic client-side email check
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newEmail)) {
+        const email = newEmail.trim();
+        if (!email.includes('@')) {
             alert('Please enter a valid email address');
             return;
         }
 
         // prevent duplicates
-        if (collaborators.some(c => c.email.toLowerCase() === newEmail.toLowerCase())) {
+        if (collaborators.some(c => c.email.toLowerCase() === email.toLowerCase())) {
             alert('This email is already added');
             return;
         }
 
         if (!collaborationId) {
-            // create-flow: just update local state (shouldn't happen directly in NoteEditorPage for existing notes)
-            // This path is primarily for CreateCollaborationPage
             setCollaborators([
                 ...collaborators,
-                { id: Date.now(), email: newEmail.trim(), role: newRole }
+                { id: Date.now(), email, role: newRole }
             ]);
         } else {
             // edit-flow: call backend invite endpoint
@@ -75,7 +72,7 @@ export default function CollaboratorsSection({
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ email: newEmail.trim(), role: newRole })
+                        body: JSON.stringify({ email, role: newRole })
                     }
                 );
                 if (!res.ok) {
@@ -93,13 +90,12 @@ export default function CollaboratorsSection({
         setShowAddForm(false);
     };
 
-    // removeCollaborator: local remove in create mode OR member delete endpoint in edit mode.
+    // removeCollaborator: remove a member from an existing workspace.
     const removeCollaborator = async (memberId) => {
         // Only allow removing if parent allows editing
         if (!parentIsEditing) return; // Ensure parentIsEditing is true
 
         if (!collaborationId) {
-            // create-flow: just update local (primarily for CreateCollaborationPage)
             setCollaborators(collaborators.filter(c => c.id !== memberId));
         } else {
             // edit-flow: call backend delete member
@@ -119,13 +115,12 @@ export default function CollaboratorsSection({
         }
     };
 
-    // updateCollaboratorRole: local role change in create mode OR member role endpoint in edit mode.
+    // updateCollaboratorRole: change a workspace member role.
     const updateCollaboratorRole = async (memberId, role) => {
         // Only allow updating role if parent allows editing
         if (!parentIsEditing) return; // Ensure parentIsEditing is true
 
         if (!collaborationId) {
-            // create-flow: just update local (primarily for CreateCollaborationPage)
             setCollaborators(collaborators.map(c =>
                 c.id === memberId ? { ...c, role } : c
             ));
@@ -179,9 +174,8 @@ export default function CollaboratorsSection({
                 <div className="add-collaborator-form">
                     <div className="form-group">
                         <div className="email-input-group">
-                            <Mail size={16} className="input-icon" />
                             <input
-                                type="email"
+                                type="text"
                                 placeholder="Enter email address"
                                 value={newEmail}
                                 onChange={e => setNewEmail(e.target.value)}
@@ -198,9 +192,8 @@ export default function CollaboratorsSection({
                                 className="role-select"
                                 disabled={disabled}
                             >
-                                <option value="viewer">View</option>
-                                <option value="editor">Edit</option>
-                                <option value="owner">Owner</option>
+                                <option value="viewer">Viewer</option>
+                                <option value="editor">Editor</option>
                             </select>
 
                             <button
@@ -242,24 +235,29 @@ export default function CollaboratorsSection({
                             </div>
 
                             <div className="collaborator-actions">
-                                <select
-                                    className="role-select"
-                                    value={collab.role}
-                                    onChange={e => updateCollaboratorRole(collab.id, e.target.value)}
-                                    disabled={disabled}
-                                >
-                                    <option value="viewer">Viewer</option>
-                                    <option value="editor">Editor</option>
-                                    <option value="owner">Owner</option>
-                                </select>
+                                {collab.role === 'owner' ? (
+                                    <span className="role-select collaboration-owner-role">Owner</span>
+                                ) : (
+                                    <>
+                                        <select
+                                            className="role-select"
+                                            value={collab.role}
+                                            onChange={e => updateCollaboratorRole(collab.id, e.target.value)}
+                                            disabled={disabled}
+                                        >
+                                            <option value="viewer">Viewer</option>
+                                            <option value="editor">Editor</option>
+                                        </select>
 
-                                <button
-                                    className="remove-collaborator-btn"
-                                    onClick={() => removeCollaborator(collab.id)}
-                                    disabled={disabled}
-                                >
-                                    <X size={14} />
-                                </button>
+                                        <button
+                                            className="remove-collaborator-btn"
+                                            onClick={() => removeCollaborator(collab.id)}
+                                            disabled={disabled}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))
@@ -269,9 +267,9 @@ export default function CollaboratorsSection({
             <div className="permissions-info">
                 <h5>Permission Levels:</h5>
                 <ul>
-                    <li><strong>Viewer:</strong> Can only view the note</li>
-                    <li><strong>Editor:</strong> Can view and edit the note</li>
-                    <li><strong>Owner:</strong> Can view, edit, and manage the collaboration</li>
+                    <li><strong>Viewer:</strong> Can only view workspace notes</li>
+                    <li><strong>Editor:</strong> Can create and edit workspace notes</li>
+                    <li><strong>Owner:</strong> Can manage the collaboration</li>
                 </ul>
             </div>
         </div>

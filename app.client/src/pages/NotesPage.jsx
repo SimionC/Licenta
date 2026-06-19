@@ -4,7 +4,6 @@ import Sidebar from '../components/Sidebar';
 import NotesNoteCard from '../components/NotesNoteCard';
 import {
     Clock,
-    FileText,
     Folder,
     FolderPlus,
     Inbox,
@@ -12,6 +11,7 @@ import {
     Plus,
     Search,
     Trash2,
+    UserPlus,
     UserRoundCheck,
     Users,
     X
@@ -20,11 +20,10 @@ import '../components/NotesNoteCard.css';
 
 /**
  * Purpose: Personal notes workspace with folders, filtering, and search.
- * API touched: GET /api/Notes/my-notes, CRUD /api/NoteFolders.
+ * API touched: GET /api/Notes/my-notes, GET /api/Notes/accessible-notes, CRUD /api/NoteFolders.
  * Route contract: collaboration notes still route to /collaborations/{id}/notes/{guid}.
  */
 
-const VIEW_ALL = 'all';
 const VIEW_RECENT = 'recent';
 const VIEW_NO_FOLDER = 'no-folder';
 const VIEW_SHARED = 'shared';
@@ -32,41 +31,82 @@ const VIEW_SHARED = 'shared';
 const NotesPage = () => {
     const navigate = useNavigate();
     const [notes, setNotes] = useState([]);
+    const [recentNotes, setRecentNotes] = useState([]);
     const [sharedNotes, setSharedNotes] = useState([]);
     const [folders, setFolders] = useState([]);
+    const [collaborations, setCollaborations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedView, setSelectedView] = useState(VIEW_ALL);
+    const [selectedView, setSelectedView] = useState(VIEW_RECENT);
     const [selectedFolderId, setSelectedFolderId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [newFolderName, setNewFolderName] = useState('');
     const [editingFolderId, setEditingFolderId] = useState(null);
     const [editingFolderName, setEditingFolderName] = useState('');
     const [folderToDelete, setFolderToDelete] = useState(null);
+    const [collaborationModalOpen, setCollaborationModalOpen] = useState(false);
+    const [collaborationName, setCollaborationName] = useState('');
+    const [collaborationMembers, setCollaborationMembers] = useState([]);
+    const [collaborationEmail, setCollaborationEmail] = useState('');
+    const [collaborationRole, setCollaborationRole] = useState('viewer');
+    const [collaborationModalMessage, setCollaborationModalMessage] = useState('');
+    const [isCreatingCollaboration, setIsCreatingCollaboration] = useState(false);
     const [message, setMessage] = useState('');
+    const [recentMessage, setRecentMessage] = useState('');
 
     const loadWorkspace = async () => {
         setLoading(true);
         setMessage('');
-        try {
-            const [notesRes, foldersRes] = await Promise.all([
-                fetch('/api/Notes/my-notes', { credentials: 'include' }),
-                fetch('/api/NoteFolders/my-folders', { credentials: 'include' })
-            ]);
-            const sharedRes = await fetch('/api/Notes/shared-with-me', { credentials: 'include' });
+        setRecentMessage('');
 
-            if (!notesRes.ok) throw new Error('Failed to fetch notes');
-            if (!foldersRes.ok) throw new Error('Failed to fetch folders');
-            if (!sharedRes.ok) throw new Error('Failed to fetch shared notes');
+        const loadJson = async (url, errorMessage) => {
+            try {
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res.ok) throw new Error(errorMessage);
 
-            setNotes(await notesRes.json());
-            setFolders(await foldersRes.json());
-            setSharedNotes(await sharedRes.json());
-        } catch (err) {
-            console.error('Error loading notes workspace:', err);
-            setMessage('Could not load notes workspace.');
-        } finally {
-            setLoading(false);
-        }
+                const data = await res.json();
+                return { data: Array.isArray(data) ? data : [], error: '' };
+            } catch (err) {
+                console.error(`Error loading ${url}:`, err);
+                return { data: [], error: errorMessage };
+            }
+        };
+
+        const results = await Promise.allSettled([
+            loadJson('/api/Notes/my-notes', 'Could not load personal notes.'),
+            loadJson('/api/Notes/accessible-notes', 'Could not load recent notes.'),
+            loadJson('/api/NoteFolders/my-folders', 'Could not load folders.'),
+            loadJson('/api/Collaborations/my-collaborations', 'Could not load collaborations.'),
+            loadJson('/api/Notes/shared-with-me', 'Could not load shared notes.')
+        ]);
+
+        const unwrap = (result, fallbackError) => (
+            result.status === 'fulfilled'
+                ? result.value
+                : { data: [], error: fallbackError }
+        );
+
+        const personal = unwrap(results[0], 'Could not load personal notes.');
+        const recent = unwrap(results[1], 'Could not load recent notes.');
+        const folderData = unwrap(results[2], 'Could not load folders.');
+        const collaborationData = unwrap(results[3], 'Could not load collaborations.');
+        const shared = unwrap(results[4], 'Could not load shared notes.');
+
+        setNotes(personal.data);
+        setRecentNotes(recent.data);
+        setFolders(folderData.data);
+        setCollaborations(collaborationData.data);
+        setSharedNotes(shared.data);
+        setRecentMessage(recent.error);
+
+        const workspaceErrors = [
+            personal.error,
+            folderData.error,
+            collaborationData.error,
+            shared.error
+        ].filter(Boolean);
+
+        setMessage(workspaceErrors.join(' '));
+        setLoading(false);
     };
 
     useEffect(() => {
@@ -86,14 +126,18 @@ const NotesPage = () => {
 
     const filteredNotes = useMemo(() => {
         const normalizedSearch = searchTerm.trim().toLowerCase();
-        let nextNotes = selectedView === VIEW_SHARED ? [...sharedNotes] : [...notes];
+        let nextNotes = selectedView === VIEW_SHARED
+            ? [...sharedNotes]
+            : selectedView === VIEW_RECENT
+                ? [...recentNotes]
+                : [...notes];
 
         if (selectedView === VIEW_RECENT) {
             nextNotes = nextNotes.slice(0, 10);
         } else if (selectedView === VIEW_NO_FOLDER) {
-            nextNotes = nextNotes.filter(note => !note.folderId);
+            nextNotes = nextNotes.filter(note => !note.folderId && !note.collaborationId);
         } else if (selectedFolderId) {
-            nextNotes = nextNotes.filter(note => note.folderId === selectedFolderId);
+            nextNotes = nextNotes.filter(note => note.folderId === selectedFolderId && !note.collaborationId);
         }
 
         if (normalizedSearch) {
@@ -105,7 +149,7 @@ const NotesPage = () => {
         }
 
         return nextNotes;
-    }, [notes, sharedNotes, searchTerm, selectedFolderId, selectedView]);
+    }, [notes, recentNotes, sharedNotes, searchTerm, selectedFolderId, selectedView]);
 
     const selectView = (view) => {
         setSelectedView(view);
@@ -120,6 +164,80 @@ const NotesPage = () => {
     const handleCreateNote = () => {
         const query = selectedFolderId ? `?folderId=${selectedFolderId}` : '';
         navigate(`/notes/new${query}`);
+    };
+
+    const resetCollaborationModal = () => {
+        setCollaborationName('');
+        setCollaborationMembers([]);
+        setCollaborationEmail('');
+        setCollaborationRole('viewer');
+        setCollaborationModalMessage('');
+    };
+
+    const closeCollaborationModal = () => {
+        setCollaborationModalOpen(false);
+        resetCollaborationModal();
+    };
+
+    const handleAddCollaborationMember = () => {
+        const email = collaborationEmail.trim().toLowerCase();
+        if (!email) return;
+
+        if (!email.includes('@')) {
+            setCollaborationModalMessage('Please enter a valid collaborator email.');
+            return;
+        }
+
+        if (collaborationMembers.some(member => member.email === email)) {
+            setCollaborationModalMessage('This collaborator is already in the list.');
+            return;
+        }
+
+        setCollaborationMembers(prev => [
+            ...prev,
+            { id: Date.now(), email, role: collaborationRole }
+        ]);
+        setCollaborationEmail('');
+        setCollaborationRole('viewer');
+        setCollaborationModalMessage('');
+    };
+
+    const handleCreateCollaboration = async (e) => {
+        e.preventDefault();
+        const name = collaborationName.trim();
+        if (!name) {
+            setCollaborationModalMessage('Collaboration name is required.');
+            return;
+        }
+
+        setIsCreatingCollaboration(true);
+        setCollaborationModalMessage('');
+
+        try {
+            const res = await fetch('/api/Collaborations/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    name,
+                    members: collaborationMembers.map(({ email, role }) => ({ email, role }))
+                })
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(errorText || 'Could not create collaboration.');
+            }
+
+            const collaboration = await res.json();
+            setCollaborations(prev => [...prev, collaboration].sort((a, b) => a.name.localeCompare(b.name)));
+            closeCollaborationModal();
+            navigate(`/collaborations/${collaboration.id}`);
+        } catch (err) {
+            setCollaborationModalMessage(err.message || 'Could not create collaboration.');
+        } finally {
+            setIsCreatingCollaboration(false);
+        }
     };
 
     const handleCreateFolder = async (e) => {
@@ -180,7 +298,7 @@ const NotesPage = () => {
                     ? { ...note, folderId: null, folderName: null }
                     : note
             ));
-            if (selectedFolderId === folderToDelete.id) selectView(VIEW_ALL);
+            if (selectedFolderId === folderToDelete.id) selectView(VIEW_RECENT);
             setFolderToDelete(null);
         } else {
             setMessage('Could not delete folder.');
@@ -199,6 +317,8 @@ const NotesPage = () => {
         ? 'No notes match your search.'
         : selectedFolder
             ? 'This folder is empty.'
+            : selectedView === VIEW_RECENT
+                ? 'No recent notes yet.'
             : selectedView === VIEW_SHARED
                 ? 'No notes have been shared with you yet.'
             : selectedView === VIEW_NO_FOLDER
@@ -211,13 +331,6 @@ const NotesPage = () => {
             <div className="notes-main notes-workspace">
                 <aside className="notes-workspace-sidebar">
                     <div className="notes-sidebar-title">Notes</div>
-                    <button
-                        className={`notes-view-btn ${selectedView === VIEW_ALL && !selectedFolderId ? 'active' : ''}`}
-                        onClick={() => selectView(VIEW_ALL)}
-                    >
-                        <FileText size={17} />
-                        All Notes
-                    </button>
                     <button
                         className={`notes-view-btn ${selectedView === VIEW_RECENT ? 'active' : ''}`}
                         onClick={() => selectView(VIEW_RECENT)}
@@ -300,6 +413,35 @@ const NotesPage = () => {
                             </div>
                         ))}
                     </div>
+
+                    <div className="notes-folder-heading notes-heading-row">
+                        <span>Collaborations</span>
+                        <button
+                            type="button"
+                            className="notes-heading-action"
+                            title="Create collaboration"
+                            onClick={() => setCollaborationModalOpen(true)}
+                        >
+                            <Plus size={15} />
+                        </button>
+                    </div>
+
+                    <div className="notes-folder-list">
+                        {collaborations.length === 0 ? (
+                            <p className="notes-sidebar-empty">No shared workspaces yet.</p>
+                        ) : collaborations.map(collaboration => (
+                            <div key={collaboration.id} className="notes-folder-row">
+                                <button
+                                    className="notes-folder-select"
+                                    onClick={() => navigate(`/collaborations/${collaboration.id}`)}
+                                >
+                                    <Users size={17} />
+                                    <span>{collaboration.name}</span>
+                                    <small>{collaboration.myRole}</small>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </aside>
 
                 <main className="notes-workspace-main">
@@ -310,22 +452,18 @@ const NotesPage = () => {
                                 {selectedFolder
                                     ? selectedFolder.name
                                     : selectedView === VIEW_RECENT
-                                        ? 'Recently updated notes'
+                                        ? 'Notes you personally worked on'
                                         : selectedView === VIEW_SHARED
                                             ? 'Notes other users shared with you'
                                             : selectedView === VIEW_NO_FOLDER
                                             ? 'Notes not assigned to a folder'
-                                            : 'All personal and collaboration notes'}
+                                            : 'All personal notes'}
                             </p>
                         </div>
                         <div className="notes-actions">
                             <button className="notes-btn" onClick={handleCreateNote}>
                                 <Plus size={16} />
                                 Create Note
-                            </button>
-                            <button className="notes-btn secondary" onClick={() => navigate('/collaborations/new')}>
-                                <Users size={16} />
-                                Create Collaboration
                             </button>
                         </div>
                     </div>
@@ -340,6 +478,9 @@ const NotesPage = () => {
                     </div>
 
                     {message && <div className="notes-message">{message}</div>}
+                    {selectedView === VIEW_RECENT && recentMessage && (
+                        <div className="notes-message">{recentMessage}</div>
+                    )}
 
                     {loading ? (
                         <div className="notes-empty-state">Loading your notes...</div>
@@ -394,6 +535,84 @@ const NotesPage = () => {
                             <button className="btn-cancel" onClick={() => setFolderToDelete(null)}>Cancel</button>
                             <button className="btn-danger-confirm" onClick={handleDeleteFolder}>Delete folder</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {collaborationModalOpen && (
+                <div className="modal-overlay">
+                    <div className="modal-content notes-confirm-modal notes-collaboration-modal">
+                        <div className="notes-modal-header">
+                            <h3>Create collaboration</h3>
+                            <button onClick={closeCollaborationModal} disabled={isCreatingCollaboration}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateCollaboration}>
+                            <label className="notes-modal-label">
+                                Collaboration name
+                                <input
+                                    value={collaborationName}
+                                    onChange={(e) => setCollaborationName(e.target.value)}
+                                    placeholder="Workspace name"
+                                    autoFocus
+                                />
+                            </label>
+
+                            <div className="notes-collab-member-form">
+                                <input
+                                    type="text"
+                                    value={collaborationEmail}
+                                    onChange={(e) => setCollaborationEmail(e.target.value)}
+                                    placeholder="Collaborator email"
+                                />
+                                <select
+                                    value={collaborationRole}
+                                    onChange={(e) => setCollaborationRole(e.target.value)}
+                                >
+                                    <option value="viewer">Viewer</option>
+                                    <option value="editor">Editor</option>
+                                </select>
+                                <button type="button" onClick={handleAddCollaborationMember}>
+                                    <UserPlus size={15} />
+                                    Add
+                                </button>
+                            </div>
+
+                            <div className="notes-collab-member-list">
+                                {collaborationMembers.length === 0 ? (
+                                    <p>No collaborators yet. You can add members later.</p>
+                                ) : collaborationMembers.map(member => (
+                                    <div className="notes-collab-member-row" key={member.id}>
+                                        <span>{member.email}</span>
+                                        <strong>{member.role}</strong>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCollaborationMembers(prev => prev.filter(item => item.id !== member.id))}
+                                            title="Remove collaborator"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {collaborationModalMessage && (
+                                <div className="notes-message notes-modal-message">
+                                    {collaborationModalMessage}
+                                </div>
+                            )}
+
+                            <div className="notes-modal-actions">
+                                <button type="button" className="btn-cancel" onClick={closeCollaborationModal} disabled={isCreatingCollaboration}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="notes-btn" disabled={isCreatingCollaboration}>
+                                    {isCreatingCollaboration ? 'Creating...' : 'Create'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

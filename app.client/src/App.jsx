@@ -10,7 +10,6 @@ import AllCoursesPage from './pages/AllCoursesPage';
 import CoursePage from './pages/CoursePage';
 import NotesPage from './pages/NotesPage';
 import NoteEditorPage from './pages/NoteEditorPage';
-import CreateCollaborationPage from './pages/CreateCollaborationPage';
 import CollaborationDetailPage from './pages/CollaborationDetailPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -40,7 +39,6 @@ function App() {
             <Route path="/courses/:courseId" element={<CoursePage />} />
             {/* Notes - protected only (create/edit routes are protected below) */}
             {/*<Route path="/notes/:noteGuid" element={<NoteEditorPage />} />*/}
-            {/*<Route path="/collaborations/new" element={<CreateCollaborationPage />} />*/}
             {/* protected note routes */}
             {/* Wrap components that require authentication with ProtectedRoute */}
 
@@ -64,13 +62,6 @@ function App() {
                 </ProtectedRoute>
             } />
 
-            {/* Route for creating a new collaboration */}
-            <Route path="/collaborations/new" element={
-                <ProtectedRoute>
-                    <CreateCollaborationPage />
-                </ProtectedRoute>
-            } />
-
             {/* Route for viewing collaboration details (e.g., listing notes in a collaboration) */}
             <Route path="/collaborations/:collabId" element={
                 <ProtectedRoute>
@@ -78,12 +69,12 @@ function App() {
                 </ProtectedRoute>
             } />
 
-            {/*
-                    CRUCIAL CHANGE HERE:
-                    This path, which was previously for CollaborationNotePage,
-                    now also points to NoteEditorPage.
-                    NoteEditorPage will use both :collabId (if present) and :noteGuid.
-                */}
+            <Route path="/collaborations/:collabId/notes/new" element={
+                <ProtectedRoute>
+                    <NoteEditorPage />
+                </ProtectedRoute>
+            } />
+
             <Route path="/collaborations/:collabId/notes/:noteGuid" element={
                 <ProtectedRoute>
                     <NoteEditorPage />
