@@ -1,82 +1,96 @@
-﻿import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
-import CourseCard from '../components/CourseCard';
-import NoteCard from '../components/NoteCard';
+import CoursesCourseCard from '../components/CoursesCourseCard';
+import NotesNoteCard from '../components/NotesNoteCard';
 import AssignmentCard from '../components/AssignmentCard';
-import Schedule from '../components/Schedule';
 import { Clock } from "react-feather";
 import { BookOpen, FileText } from 'lucide-react';
 
 /**
- * Purpose: Landing dashboard with recent courses, notes, and upcoming assignments snapshot.
- * API touched: GET /api/Course/{id} for locally tracked recent IDs.
- * Side effects: reads localStorage key recentCourses_{userEmail}.
+ * Purpose: Landing dashboard with real recent courses, notes, and assignment urgency.
+ * API touched: GET /api/Dashboard.
  */
 
+const formatDate = (value) => {
+    if (!value) return 'No deadline';
+    return new Date(value).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+};
+
+const cleanPreview = (value = '') => value
+    .replace(/[#*_`~>-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getDueDateStatus = (value) => {
+    if (!value) return 'ok';
+
+    const now = new Date();
+    const due = new Date(value);
+    if (due.getHours() === 0 && due.getMinutes() === 0 && due.getSeconds() === 0) {
+        due.setHours(23, 59, 59, 999);
+    }
+
+    if (due < now) return 'closed';
+    if (due.toDateString() === now.toDateString()) return 'urgent';
+
+    const soon = new Date(now);
+    soon.setDate(soon.getDate() + 3);
+    return due <= soon ? 'warning' : 'ok';
+};
+
 const DashboardPage = () => {
-    const [recentCourses, setRecentCourses] = useState([]);
-
-    const mockCourses = [
-        { id: 1, title: 'React Fundamentals' },
-        { id: 2, title: 'UI/UX Design' },
-        { id: 3, title: 'Databases' }
-    ];
-
-    const mockNotes = [
-        { id: 1, title: 'Component Patterns' },
-        { id: 2, title: 'API Integration' },
-        { id: 3, title: 'Design Systems' }
-    ];
-
-    const mockAssignments = [
-        {
-            id: 1,
-            title: "Component Architecture Assignment",
-            course: "Object-Oriented Programming",
-            due: "Due: Today, 11:59 PM",
-            status: "urgent", // red
-        },
-        {
-            id: 2,
-            title: "SQL Query Optimization",
-            course: "Databases",
-            due: "Due: Tomorrow, 5:00 PM",
-            status: "urgent", // yellow
-        },
-        {
-            id: 3,
-            title: "Market Analysis Project",
-            course: "Quantitative Microeconomics",
-            due: "Due: Mar 25, 2024",
-            status: "warning", // green
-        },
-        {
-            id: 4,
-            title: "Portfolio Management Quiz",
-            course: "Finance",
-            due: "Due: Mar 30, 2024",
-            status: "ok",
-        },
-    ];
-
-    // useEffect recent list: resolves stored course IDs into full course cards.
-    useEffect(() => {
-        setRecentCourses(mockCourses);
-    }, []);
+    const navigate = useNavigate();
+    const [dashboard, setDashboard] = useState({
+        role: '',
+        recentCourses: [],
+        recentNotes: [],
+        urgentAssignments: []
+    });
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
-        const userEmail = localStorage.getItem("userEmail");
-        if (!userEmail) return;
+        const loadDashboard = async () => {
+            try {
+                const res = await fetch('/api/Dashboard', { credentials: 'include' });
+                if (!res.ok) throw new Error('Dashboard request failed.');
+                const data = await res.json();
+                setDashboard({
+                    role: data.role || '',
+                    recentCourses: data.recentCourses || [],
+                    recentNotes: data.recentNotes || [],
+                    urgentAssignments: data.urgentAssignments || []
+                });
+            } catch (err) {
+                console.error(err);
+                setMessage('Could not load dashboard data.');
+            }
+        };
 
-        const key = `recentCourses_${userEmail}`;
-        const stored = JSON.parse(localStorage.getItem(key) || '[]');
-
-        Promise.all(
-            stored.map(id => axios.get(`/api/Course/${id}`).then(res => res.data))
-        ).then(setRecentCourses)
-            .catch(err => console.error("Error loading recent courses", err));
+        loadDashboard();
     }, []);
+
+    const assignmentCards = dashboard.urgentAssignments.map(assignment => ({
+        id: assignment.id,
+        courseId: assignment.courseId,
+        title: assignment.title,
+        course: assignment.courseTitle,
+        due: `${assignment.label} - ${formatDate(assignment.deadline)}`,
+        status: getDueDateStatus(assignment.deadline)
+    }));
+
+    const noteCards = dashboard.recentNotes.map(note => ({
+        ...note,
+        title: note.title || 'Untitled Note',
+        desc: cleanPreview(note.preview) || 'No content yet.',
+        tag: note.collaborationName ? 'Workspace' : 'Note',
+        date: formatDate(note.updatedAt),
+        folderName: note.collaborationName || note.folderName || 'Personal'
+    }));
 
     return (
         <div style={{ display: 'flex', backgroundColor: '#FBF6E9', minHeight: '100vh' }}>
@@ -84,37 +98,48 @@ const DashboardPage = () => {
             <div style={{ flex: 1, padding: '3rem 4rem' }}>
                 <div className="dashboard-main">
                     <div className="dashboard-left">
-                        {/* Dashboard Title */}
                         <h1 className="dashboard-title">Dashboard</h1>
 
-                        {/* Recent Courses Header */}
+                        {message && <div className="dashboard-data-message">{message}</div>}
+
                         <div className="section-header">
                             <BookOpen size={20} color="#118B50" />
                             <h4>Recent Courses</h4>
                         </div>
 
-                        {/* Course Cards */}
-                        <div className="card-grid">
-                            {recentCourses.map(course => (
-                                <CourseCard key={course.id} course={course} />
-                            ))}
+                        <div className="card-grid dashboard-card-grid">
+                            {dashboard.recentCourses.length === 0 ? (
+                                <div className="dashboard-empty-card">No courses yet.</div>
+                            ) : (
+                                dashboard.recentCourses.slice(0, 4).map(course => (
+                                    <CoursesCourseCard key={course.id} course={course} />
+                                ))
+                            )}
                         </div>
 
-                        {/* Recent Notes Header */}
                         <div className="section-header" style={{ marginTop: '3rem' }}>
                             <FileText size={20} color="#118B50" />
                             <h4>Recent Notes</h4>
                         </div>
 
-                        {/* Notes Cards */}
-                        <div className="card-grid">
-                            {mockNotes.map(note => (
-                                <NoteCard key={note.id} note={note} />
-                            ))}
+                        <div className="card-grid dashboard-card-grid">
+                            {noteCards.length === 0 ? (
+                                <div className="dashboard-empty-card">No notes yet.</div>
+                            ) : (
+                                noteCards.slice(0, 4).map(note => (
+                                    <button
+                                        key={note.guid || note.id}
+                                        type="button"
+                                        className="dashboard-note-card-link"
+                                        onClick={() => navigate(note.collaborationId
+                                            ? `/collaborations/${note.collaborationId}/notes/${note.guid}`
+                                            : `/notes/${note.guid}`)}
+                                    >
+                                        <NotesNoteCard note={note} />
+                                    </button>
+                                ))
+                            )}
                         </div>
-
-                        {/* Schedule */}
-                        <Schedule />
                     </div>
 
                     <div className="dashboard-right">
@@ -122,16 +147,22 @@ const DashboardPage = () => {
                             <Clock size={20} color="#118B50" />
                             <h4>Upcoming Assignments</h4>
                         </div>
-                        {mockAssignments.map(assign => (
-                            <AssignmentCard key={assign.id} assignment={assign} />
-                        ))}
+                        {assignmentCards.length === 0 ? (
+                            <div className="dashboard-empty-card">No urgent assignments.</div>
+                        ) : (
+                            assignmentCards.map(assign => (
+                                <AssignmentCard
+                                    key={`${assign.id}-${assign.course}`}
+                                    assignment={assign}
+                                    onClick={() => navigate(`/courses/${assign.courseId}?tab=assignments`)}
+                                />
+                            ))
+                        )}
                     </div>
                 </div>
-
             </div>
         </div>
     );
-
 };
 
 export default DashboardPage;

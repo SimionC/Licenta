@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import React from 'react';
 import {
@@ -132,8 +132,9 @@ const SubmissionAnswerPreview = ({ title, content, label = 'Submitted answer', a
 const CoursePage = () => {
     const { courseId } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [course, setCourse] = useState(null);
-    const [activeTab, setActiveTab] = useState('resources');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'assignments' ? 'assignments' : 'resources');
     const [courseWorks, setCourseWorks] = useState([]);
     const [resources, setResources] = useState([]);
     const [availableNotes, setAvailableNotes] = useState([]);
@@ -182,6 +183,13 @@ const CoursePage = () => {
     useEffect(() => {
         loadCourseData();
     }, [courseId]);
+
+    useEffect(() => {
+        const requestedTab = searchParams.get('tab');
+        if (['resources', 'assignments', 'grades'].includes(requestedTab)) {
+            setActiveTab(requestedTab);
+        }
+    }, [searchParams]);
 
     const refreshGrades = async () => {
         const res = await fetch(`/api/Course/${courseId}/grades`, { credentials: 'include' });

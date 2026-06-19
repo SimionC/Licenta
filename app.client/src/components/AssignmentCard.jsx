@@ -4,19 +4,28 @@ import { AlertCircle, Circle } from "react-feather";
 const statusColor = {
     urgent: "#E74C3C",
     warning: "#F1C40F",
-    ok: "#2ECC71"
+    ok: "#2ECC71",
+    closed: "#94A3B8"
 };
 
-const AssignmentCard = ({ assignment }) => {
+const statusBackground = {
+    urgent: "#FDEDEC",
+    warning: "#FCF3CF",
+    ok: "#EAFAF1",
+    closed: "#F1F5F9"
+};
+
+const AssignmentCard = ({ assignment, onClick }) => {
     return (
-        <div style={{
+        <div onClick={onClick} style={{
             backgroundColor: "#fff",
             borderRadius: "1rem",
             padding: "1rem",
             marginBottom: "1rem",
             boxShadow: "0 0 4px rgba(0,0,0,0.08)",
             border: `1px solid ${statusColor[assignment.status] || '#ccc'}`,
-            position: "relative"
+            position: "relative",
+            cursor: onClick ? "pointer" : "default"
         }}>
             <div style={{ fontWeight: 'bold', color: '#18230F', fontSize: '0.95rem' }}>
                 {assignment.title}
@@ -25,7 +34,7 @@ const AssignmentCard = ({ assignment }) => {
                 {assignment.course}
             </div>
             <div style={{
-                backgroundColor: `${assignment.status === 'urgent' ? '#FDEDEC' : assignment.status === 'warning' ? '#FCF3CF' : '#EAFAF1'}`,
+                backgroundColor: statusBackground[assignment.status] || "#EAFAF1",
                 color: statusColor[assignment.status],
                 padding: "0.2rem 0.6rem",
                 borderRadius: "12px",
