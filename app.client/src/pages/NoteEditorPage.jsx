@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Save, Eye, X, Share2, Folder, UserPlus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Eye, X, Share2, Folder, UserPlus, Trash2, Download } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import CollaboratorsSection from '../components/CollaboratorsSection'
 import './NoteEditorPage.css';
@@ -48,6 +48,7 @@ const NoteEditorPage = () => {
     const [shareEmail, setShareEmail] = useState('');
     const [shareRole, setShareRole] = useState('viewer');
     const [isSharing, setIsSharing] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         fetch('/api/NoteFolders/my-folders', { credentials: 'include' })
@@ -357,6 +358,44 @@ const NoteEditorPage = () => {
         }
     };
 
+    const handleDownload = async () => {
+        if (!note?.guid || isNewNote) return;
+
+        setIsDownloading(true);
+        setStatusMessage('');
+        try {
+            const res = await fetch(`/api/Notes/${note.guid}/download?format=md`, {
+                credentials: 'include'
+            });
+
+            if (!res.ok) {
+                throw new Error(await readApiMessage(res, 'Could not download note.'));
+            }
+
+            const blob = await res.blob();
+            const contentDisposition = res.headers.get('content-disposition') || '';
+            const filenameMatch = contentDisposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+            const fallbackName = `${(title || 'note').replace(/[\\/:*?"<>|]+/g, '_')}.md`;
+            const filename = filenameMatch
+                ? decodeURIComponent(filenameMatch[1].replace(/"/g, ''))
+                : fallbackName;
+
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            showStatus('Note downloaded.');
+        } catch (err) {
+            showStatus(err.message || 'Could not download note.', 'error');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     // handleCancel: restores loaded values (existing) or exits to notes list (new).
     const handleCancel = () => {
         if (isNewNote) {
@@ -508,7 +547,17 @@ const NoteEditorPage = () => {
                                             ? 'Collaboration'
                                             : canManageSharing
                                                 ? `Share${permissions.length ? ` (${permissions.length})` : ''}`
-                                                : 'Shared'}
+                                            : 'Shared'}
+                                    </button>
+                                )}
+                                {!isNewNote && note?.guid && (
+                                    <button
+                                        className="note-action-btn"
+                                        onClick={handleDownload}
+                                        disabled={isDownloading}
+                                    >
+                                        <Download size={16} />
+                                        {isDownloading ? 'Downloading...' : 'Download'}
                                     </button>
                                 )}
                                 {/* Only show edit/delete if not a new note, and not currently editing */}

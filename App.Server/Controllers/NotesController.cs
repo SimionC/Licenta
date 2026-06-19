@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using App.Server.ORM;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using System.Text;
 
 //Purpose: Full notes CRUD + access control (owner/direct share/collaboration member).
 //Inputs/Outputs: Uses current user claims + note guid/collaboration id; maps Note entity to NoteModel DTO.
@@ -244,6 +245,63 @@ namespace App.Server.Controllers
             Response.Headers["X-Can-Manage-Sharing"] = canManageSharing.ToString();
 
             return Ok(MapNote(note, userRole ?? "viewer", canEdit, canManageSharing));
+        }
+
+        //Trigger: GET api/Notes/{guid}/download?format=md.
+        //Guards: Allows owner, direct shared user, or collaboration member.
+        //Result: Markdown file download for the live note content.
+        [HttpGet("{guid}/download")]
+        public async Task<IActionResult> DownloadNote(string guid, [FromQuery] string? format = "md")
+        {
+            var requestedFormat = string.IsNullOrWhiteSpace(format)
+                ? "md"
+                : format.Trim().ToLowerInvariant();
+
+            if (requestedFormat != "md")
+            {
+                return BadRequest(new { message = "Only markdown downloads are supported." });
+            }
+
+            var note = await _context.Notes.FirstOrDefaultAsync(n => n.Guid == guid);
+            if (note == null)
+            {
+                return NotFound();
+            }
+
+            var currentUserId = GetCurrentUserId();
+            if (currentUserId == null)
+            {
+                return Unauthorized();
+            }
+
+            var canAccess = note.UserId == currentUserId.Value;
+
+            if (!canAccess && note.CollaborationId != null)
+            {
+                canAccess = await _context.CollaborationMembers.AnyAsync(cm =>
+                    cm.CollaborationId == note.CollaborationId.Value &&
+                    cm.UserId == currentUserId.Value);
+            }
+
+            if (!canAccess && note.CollaborationId == null)
+            {
+                canAccess = await _context.NotePermissions.AnyAsync(p =>
+                    p.NoteId == note.Id &&
+                    p.UserId == currentUserId.Value &&
+                    p.Status == "accepted");
+            }
+
+            if (!canAccess)
+            {
+                return Forbid();
+            }
+
+            var title = string.IsNullOrWhiteSpace(note.Title) ? "Untitled Note" : note.Title.Trim();
+            var markdown = $"# {title}\n\n{note.Text ?? string.Empty}";
+            var bytes = Encoding.UTF8.GetBytes(markdown);
+            var fileName = $"{SanitizeFileName(title)}.md";
+
+            return File(bytes, "text/markdown; charset=utf-8", fileName);
         }
 
         //Trigger: GET api/Notes/{guid}/permissions.
@@ -643,6 +701,13 @@ namespace App.Server.Controllers
         private static bool IsCollaborationEditorRole(string? role)
         {
             return role == "owner" || role == "editor";
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            var invalidChars = Path.GetInvalidFileNameChars();
+            var sanitized = string.Join("_", value.Split(invalidChars, StringSplitOptions.RemoveEmptyEntries)).Trim();
+            return string.IsNullOrWhiteSpace(sanitized) ? "note" : sanitized;
         }
 
         private static NoteModel MapNote(
