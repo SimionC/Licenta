@@ -18,6 +18,8 @@ public partial class SubmittedWork
     public int StudentId { get; set; }
 
     public int? NoteId { get; set; }
+
+    public int? NoteSnapshotId { get; set; }
     
     public int? GradeId { get; set; }
 
@@ -44,6 +46,9 @@ public partial class SubmittedWork
     
     [ForeignKey("NoteId")]
     public Note? Note { get; set; } = null;
+
+    [ForeignKey("NoteSnapshotId")]
+    public NoteSnapshot? NoteSnapshot { get; set; } = null;
 
     [ForeignKey("GradeId")]
     public Grade? Grade { get; set; } = null;

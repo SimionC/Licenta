@@ -5,6 +5,7 @@ import {
     ArrowLeft,
     Code,
     Download,
+    FileText,
     Flag,
     CheckCircle,
     Lock,
@@ -53,6 +54,81 @@ const isDeadlineReached = (value) => {
     return Date.now() > deadline.getTime();
 };
 
+const cleanInlineMarkdown = (text = '') => text
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[*_`~]/g, '')
+    .trim();
+
+const renderSnapshotContent = (content = '', compact = false) => {
+    const lines = content.split(/\r?\n/);
+    const visibleLines = compact ? lines.slice(0, 8) : lines;
+    const elements = visibleLines.map((line, index) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={index} className="snapshot-line-break" />;
+
+        if (trimmed.startsWith('### ')) {
+            return <h4 key={index}>{cleanInlineMarkdown(trimmed.slice(4))}</h4>;
+        }
+
+        if (trimmed.startsWith('## ')) {
+            return <h3 key={index}>{cleanInlineMarkdown(trimmed.slice(3))}</h3>;
+        }
+
+        if (trimmed.startsWith('# ')) {
+            return <h2 key={index}>{cleanInlineMarkdown(trimmed.slice(2))}</h2>;
+        }
+
+        const bulletMatch = trimmed.match(/^[-*]\s+(.+)/);
+        if (bulletMatch) {
+            return (
+                <p key={index} className="snapshot-bullet">
+                    <span aria-hidden="true">*</span>
+                    {cleanInlineMarkdown(bulletMatch[1])}
+                </p>
+            );
+        }
+
+        const numberedMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+        if (numberedMatch) {
+            return (
+                <p key={index} className="snapshot-numbered">
+                    <span>{numberedMatch[1]}.</span>
+                    {cleanInlineMarkdown(numberedMatch[2])}
+                </p>
+            );
+        }
+
+        return <p key={index}>{cleanInlineMarkdown(trimmed)}</p>;
+    });
+
+    if (compact && lines.length > visibleLines.length) {
+        elements.push(<p key="snapshot-more" className="snapshot-more">Open snapshot to read the full answer.</p>);
+    }
+
+    return elements;
+};
+
+const SubmissionAnswerPreview = ({ title, content, label = 'Submitted answer', actionLabel = 'Open full answer', onOpen }) => {
+    if (!content) return null;
+
+    return (
+        <button
+            type="button"
+            className="note-snapshot-preview"
+            onClick={() => onOpen({ title: title || label, content, label })}
+        >
+            <div className="note-snapshot-preview__header">
+                <span>{label}</span>
+                <strong>{title || 'Untitled Answer'}</strong>
+            </div>
+            <div className="note-snapshot-preview__body">
+                {renderSnapshotContent(content, true)}
+            </div>
+            <span className="note-snapshot-preview__open">{actionLabel}</span>
+        </button>
+    );
+};
+
 const CoursePage = () => {
     const { courseId } = useParams();
     const navigate = useNavigate();
@@ -60,6 +136,7 @@ const CoursePage = () => {
     const [activeTab, setActiveTab] = useState('resources');
     const [courseWorks, setCourseWorks] = useState([]);
     const [resources, setResources] = useState([]);
+    const [availableNotes, setAvailableNotes] = useState([]);
     const [gradesData, setGradesData] = useState(null);
     const [submissionsByAssignment, setSubmissionsByAssignment] = useState({});
     const [savedGradeIds, setSavedGradeIds] = useState({});
@@ -71,6 +148,7 @@ const CoursePage = () => {
     const [editValues, setEditValues] = useState({ title: '', description: '' });
     const [selectedFile, setSelectedFile] = useState(null);
     const [message, setMessage] = useState('');
+    const [openSnapshot, setOpenSnapshot] = useState(null);
 
     const loadCourseData = async () => {
         setMessage('');
@@ -90,6 +168,11 @@ const CoursePage = () => {
             if (resourcesRes.ok) setResources(await resourcesRes.json());
             if (worksRes.ok) setCourseWorks(await worksRes.json());
             if (gradesRes.ok) setGradesData(await gradesRes.json());
+
+            if (!courseData.canManage) {
+                const notesRes = await fetch('/api/Notes/accessible-notes', { credentials: 'include' });
+                if (notesRes.ok) setAvailableNotes(await notesRes.json());
+            }
         } catch (err) {
             console.error(err);
             setMessage('Could not load this course. Make sure you are enrolled or own it.');
@@ -253,6 +336,34 @@ const CoursePage = () => {
             setMessage('Assignment submitted.');
         } else {
             setMessage('Could not submit. Check the deadline and your answer.');
+        }
+    };
+
+    const handleSubmitNoteSnapshot = async (assignment, e) => {
+        e.preventDefault();
+        const noteGuid = e.target.noteGuid.value;
+        if (!noteGuid) {
+            setMessage('Choose a note to submit.');
+            return;
+        }
+
+        const res = await fetch(`/api/Course/coursework/${assignment.id}/submit-note`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ noteGuid })
+        });
+
+        if (res.ok) {
+            const submission = await res.json();
+            setCourseWorks(prev => prev.map(cw =>
+                cw.id === assignment.id ? { ...cw, status: 'completed', submission } : cw
+            ));
+            await refreshGrades();
+            e.target.reset();
+            setMessage('Note snapshot submitted.');
+        } else {
+            setMessage('Could not submit the note. Check the deadline and note access.');
         }
     };
 
@@ -528,11 +639,14 @@ const CoursePage = () => {
                                             onUpload={(e) => handleUploadSupportingFile(assignment.id, e)}
                                             onGrade={(submissionId, e) => handleGradeSubmission(submissionId, assignment.id, e)}
                                             savedGradeIds={savedGradeIds}
+                                            onOpenSnapshot={setOpenSnapshot}
                                         />
                                     ) : (
                                         <StudentAssignmentPanel
                                             assignment={assignment}
                                             onSubmit={(e) => handleSubmitAssignment(assignment, e)}
+                                            onSubmitNote={(e) => handleSubmitNoteSnapshot(assignment, e)}
+                                            availableNotes={availableNotes}
                                         />
                                     )}
                                 </CourseAssignmentBox>
@@ -661,13 +775,33 @@ const CoursePage = () => {
                     </div>
                 </div>
             )}
+
+            {openSnapshot && (
+                <div className="modal-overlay">
+                    <div className="modal-content snapshot-modal">
+                        <div className="modal-header">
+                            <div>
+                                <span className="snapshot-modal-label">{openSnapshot.label || 'Submitted answer'}</span>
+                                <h3>{openSnapshot.title || 'Untitled Note'}</h3>
+                            </div>
+                            <button className="modal-close" onClick={() => setOpenSnapshot(null)}>
+                                x
+                            </button>
+                        </div>
+                        <div className="snapshot-reader">
+                            {renderSnapshotContent(openSnapshot.content || '')}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-const StudentAssignmentPanel = ({ assignment, onSubmit }) => {
+const StudentAssignmentPanel = ({ assignment, onSubmit, onSubmitNote, availableNotes }) => {
     const submission = assignment.submission;
     const locked = isDeadlineReached(assignment.deadline);
+    const textAnswerValue = submission?.noteSnapshot ? '' : submission?.textAnswer || '';
 
     return (
         <div className="assignment-panel">
@@ -686,18 +820,39 @@ const StudentAssignmentPanel = ({ assignment, onSubmit }) => {
                     Download submitted file
                 </button>
             )}
+            {submission?.noteSnapshot && (
+                <div className="grade-note">
+                    Submitted note snapshot: <strong>{submission.noteSnapshot.title || 'Untitled Note'}</strong>
+                </div>
+            )}
             {!locked ? (
-                <form className="submission-form" onSubmit={onSubmit}>
-                    <textarea
-                        name="textAnswer"
-                        placeholder="Write your answer"
-                        defaultValue={submission?.textAnswer || ''}
-                    />
-                    <input name="file" type="file" />
-                    <button type="submit" className="upload-btn">
-                        {submission ? 'Update Answer' : 'Submit Answer'}
-                    </button>
-                </form>
+                <>
+                    <form className="submission-form" onSubmit={onSubmit}>
+                        <textarea
+                            name="textAnswer"
+                            placeholder={submission?.noteSnapshot ? 'Write a new text answer if you want to replace the note snapshot' : 'Write your answer'}
+                            defaultValue={textAnswerValue}
+                        />
+                        <input name="file" type="file" />
+                        <button type="submit" className="upload-btn">
+                            {submission ? 'Update Answer' : 'Submit Answer'}
+                        </button>
+                    </form>
+                    <form className="note-snapshot-form" onSubmit={onSubmitNote}>
+                        <FileText size={16} />
+                        <select name="noteGuid" defaultValue="">
+                            <option value="">Choose a note snapshot</option>
+                            {(availableNotes || []).map(note => (
+                                <option key={`${note.guid}-${note.id}`} value={note.guid}>
+                                    {note.title || 'Untitled Note'}
+                                </option>
+                            ))}
+                        </select>
+                        <button type="submit" className="secondary-action-btn">
+                            Submit Note Snapshot
+                        </button>
+                    </form>
+                </>
             ) : (
                 <div className="deadline-reached-state">
                     <button type="button" className="deadline-reached-btn" disabled>
@@ -709,7 +864,7 @@ const StudentAssignmentPanel = ({ assignment, onSubmit }) => {
     );
 };
 
-const TeacherAssignmentPanel = ({ assignment, submissions, onEdit, onUpload, onGrade, savedGradeIds }) => {
+const TeacherAssignmentPanel = ({ assignment, submissions, onEdit, onUpload, onGrade, savedGradeIds, onOpenSnapshot }) => {
     return (
         <div className="assignment-panel">
             <div className="assignment-toolbar">
@@ -742,7 +897,28 @@ const TeacherAssignmentPanel = ({ assignment, submissions, onEdit, onUpload, onG
                                 </div>
                                 {item.submission ? (
                                     <div className="submission-detail">
-                                        <p>{item.submission.textAnswer || 'No text answer.'}</p>
+                                        {item.submission.noteSnapshot && (
+                                            <SubmissionAnswerPreview
+                                                title={item.submission.noteSnapshot.title || 'Untitled Note'}
+                                                content={item.submission.noteSnapshot.content || item.submission.textAnswer || ''}
+                                                label="Note snapshot"
+                                                actionLabel="Open full snapshot"
+                                                onOpen={onOpenSnapshot}
+                                            />
+                                        )}
+                                        {!item.submission.noteSnapshot && (
+                                            item.submission.textAnswer ? (
+                                                <SubmissionAnswerPreview
+                                                    title="Text answer"
+                                                    content={item.submission.textAnswer}
+                                                    label="Submitted answer"
+                                                    actionLabel="Open full answer"
+                                                    onOpen={onOpenSnapshot}
+                                                />
+                                            ) : (
+                                                <p>No text answer.</p>
+                                            )
+                                        )}
                                         {item.submission.hasFile && (
                                             <button
                                                 className="file-link-btn"

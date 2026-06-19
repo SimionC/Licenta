@@ -398,10 +398,84 @@ public class CourseController : ControllerBase
         }
 
         submission.TextAnswer = textAnswer?.Trim();
+        submission.NoteId = null;
+        submission.NoteSnapshotId = null;
         submission.UpdatedAt = DateTime.UtcNow;
 
         if (file != null)
             await ReplaceSubmissionFile(submission, file);
+
+        await _context.SaveChangesAsync();
+        return Ok(MapSubmission(submission));
+    }
+
+    [HttpPost("coursework/{courseWorkId}/submit-note")]
+    public async Task<IActionResult> SubmitNoteSnapshot(int courseWorkId, [FromBody] SubmitNoteSnapshotModel model)
+    {
+        return await SubmitNoteSnapshotInternal(courseWorkId, model);
+    }
+
+    [HttpPost("/api/Assignments/{assignmentId}/submit-note")]
+    public async Task<IActionResult> SubmitNoteSnapshotByAssignmentRoute(int assignmentId, [FromBody] SubmitNoteSnapshotModel model)
+    {
+        return await SubmitNoteSnapshotInternal(assignmentId, model);
+    }
+
+    private async Task<IActionResult> SubmitNoteSnapshotInternal(int courseWorkId, SubmitNoteSnapshotModel model)
+    {
+        var courseWork = await _context.CourseWork
+            .Include(cw => cw.Course)
+            .FirstOrDefaultAsync(cw => cw.Id == courseWorkId);
+        if (courseWork == null) return NotFound();
+
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+        if (courseWork.Course.TeacherId == userId.Value) return BadRequest("Teachers cannot submit assignments.");
+        if (!IsStudentEnrolled(courseWork.CourseId, userId.Value)) return Forbid();
+        if (DeadlineHasPassed(courseWork.Deadline)) return BadRequest("The deadline has passed.");
+
+        var noteGuid = model.NoteGuid?.Trim();
+        if (string.IsNullOrWhiteSpace(noteGuid))
+            return BadRequest("A noteGuid is required.");
+
+        var note = await _context.Notes.FirstOrDefaultAsync(n => n.Guid == noteGuid);
+        if (note == null) return NotFound("Note not found.");
+
+        if (!await CanAccessNoteForSnapshot(note, userId.Value))
+            return Forbid();
+
+        var now = DateTime.UtcNow;
+        var snapshot = new NoteSnapshot
+        {
+            SourceNoteId = note.Id,
+            SourceNoteGuid = note.Guid,
+            CreatedByUserId = userId.Value,
+            TitleSnapshot = note.Title,
+            ContentSnapshot = note.Text ?? string.Empty,
+            CreatedAt = now,
+            SnapshotType = "assignment_submission"
+        };
+
+        var submission = await _context.SubmittedWork
+            .Include(sw => sw.Grade)
+            .FirstOrDefaultAsync(sw => sw.CourseWorkId == courseWorkId && sw.StudentId == userId.Value);
+
+        if (submission == null)
+        {
+            submission = new SubmittedWork
+            {
+                CourseWorkId = courseWorkId,
+                StudentId = userId.Value,
+                SubmittedAt = now
+            };
+            _context.SubmittedWork.Add(submission);
+        }
+
+        _context.NoteSnapshots.Add(snapshot);
+        submission.NoteId = note.Id;
+        submission.NoteSnapshot = snapshot;
+        submission.TextAnswer = snapshot.ContentSnapshot;
+        submission.UpdatedAt = now;
 
         await _context.SaveChangesAsync();
         return Ok(MapSubmission(submission));
@@ -429,6 +503,7 @@ public class CourseController : ControllerBase
 
         var submissions = await _context.SubmittedWork
             .Include(sw => sw.Grade)
+            .Include(sw => sw.NoteSnapshot)
             .Where(sw => sw.CourseWorkId == courseWorkId)
             .ToListAsync();
 
@@ -456,6 +531,7 @@ public class CourseController : ControllerBase
             .Include(sw => sw.CourseWork)
             .ThenInclude(cw => cw.Course)
             .Include(sw => sw.Grade)
+            .Include(sw => sw.NoteSnapshot)
             .FirstOrDefaultAsync(sw => sw.Id == submissionId);
         if (submission == null) return NotFound();
 
@@ -528,6 +604,7 @@ public class CourseController : ControllerBase
         {
             var submissions = await _context.SubmittedWork
                 .Include(sw => sw.Grade)
+                .Include(sw => sw.NoteSnapshot)
                 .Where(sw => sw.StudentId == userId.Value && assignments.Select(a => a.Id).Contains(sw.CourseWorkId))
                 .ToListAsync();
 
@@ -557,6 +634,7 @@ public class CourseController : ControllerBase
         var assignmentIds = assignments.Select(a => a.Id).ToList();
         var allSubmissions = await _context.SubmittedWork
             .Include(sw => sw.Grade)
+            .Include(sw => sw.NoteSnapshot)
             .Where(sw => assignmentIds.Contains(sw.CourseWorkId))
             .ToListAsync();
 
@@ -710,6 +788,26 @@ public class CourseController : ControllerBase
     private bool IsStudentEnrolled(int courseId, int userId)
     {
         return _context.UsersCourses.Any(uc => uc.CourseId == courseId && uc.UserId == userId);
+    }
+
+    private async Task<bool> CanAccessNoteForSnapshot(Note note, int userId)
+    {
+        if (note.UserId == userId)
+        {
+            return true;
+        }
+
+        if (note.CollaborationId != null)
+        {
+            return await _context.CollaborationMembers.AnyAsync(cm =>
+                cm.CollaborationId == note.CollaborationId.Value &&
+                cm.UserId == userId);
+        }
+
+        return await _context.NotePermissions.AnyAsync(p =>
+            p.NoteId == note.Id &&
+            p.UserId == userId &&
+            p.Status == "accepted");
     }
 
     private int? GetCurrentUserId()
@@ -909,6 +1007,17 @@ public class CourseController : ControllerBase
             submission.FileSize,
             submission.SubmittedAt,
             submission.UpdatedAt,
+            NoteSnapshot = submission.NoteSnapshot == null
+                ? null
+                : new
+                {
+                    submission.NoteSnapshot.Id,
+                    submission.NoteSnapshot.SourceNoteGuid,
+                    Title = submission.NoteSnapshot.TitleSnapshot,
+                    Content = submission.NoteSnapshot.ContentSnapshot,
+                    submission.NoteSnapshot.CreatedAt,
+                    submission.NoteSnapshot.SnapshotType
+                },
             HasFile = !string.IsNullOrWhiteSpace(submission.StoredFileName),
             Grade = submission.Grade == null
                 ? null
@@ -958,6 +1067,11 @@ public class GradeSubmissionModel
 {
     public decimal GivenGrade { get; set; }
     public string? Comment { get; set; }
+}
+
+public class SubmitNoteSnapshotModel
+{
+    public string? NoteGuid { get; set; }
 }
 
 public class AssignmentGradeRow

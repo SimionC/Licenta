@@ -44,6 +44,7 @@ public partial class AppDbContext : DbContext
     public DbSet<Note> Notes { get; set; } = null!;
     public DbSet<NoteFolder> NoteFolders { get; set; } = null!;
     public DbSet<NotePermission> NotePermissions { get; set; } = null!;
+    public DbSet<NoteSnapshot> NoteSnapshots { get; set; } = null!;
     public DbSet<SubmittedWork> SubmittedWork { get; set; } = null!;
     public DbSet<User> Users { get; set; } = null!;
     public DbSet<UserCourse> UsersCourses { get; set; } = null!;
@@ -93,6 +94,24 @@ public partial class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(p => p.InvitedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<NoteSnapshot>()
+            .HasOne(s => s.SourceNote)
+            .WithMany()
+            .HasForeignKey(s => s.SourceNoteId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<NoteSnapshot>()
+            .HasOne(s => s.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(s => s.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SubmittedWork>()
+            .HasOne(sw => sw.NoteSnapshot)
+            .WithMany()
+            .HasForeignKey(sw => sw.NoteSnapshotId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         OnModelCreatingPartial(modelBuilder);
     }
