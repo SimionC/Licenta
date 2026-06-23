@@ -1,5 +1,4 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -44,6 +43,10 @@ const LoginPage = () => {
                     const me = await meRes.json();
                     localStorage.setItem("userEmail", me.email);
                     localStorage.setItem("userType", me.userType); // ✅ store userType
+                    if (me.mustChangePassword) {
+                        navigate('/change-password');
+                        return;
+                    }
                 }
                 // respect optional returnUrl
                 const params = new URLSearchParams(window.location.search);
@@ -110,11 +113,6 @@ const LoginPage = () => {
                                 Login
                             </button>
                         </form>
-
-                        {/* Register Link */}
-                        <p className="text-center mt-3">
-                            Do not have an account? <Link to="/register">Register here</Link>
-                        </p>
                     </div>
                 </div>
             </div>

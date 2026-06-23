@@ -29,7 +29,7 @@ public class CourseController : ControllerBase
         if (string.IsNullOrWhiteSpace(model.Title) || string.IsNullOrWhiteSpace(model.Description))
             return BadRequest("Title and Description are required.");
 
-        if (User.FindFirst("UserTypeId")?.Value != "2")
+        if (!IsCurrentUserTeacher())
             return Forbid();
 
         var userId = GetCurrentUserId();
@@ -66,12 +66,12 @@ public class CourseController : ControllerBase
     public IActionResult GetAllCourses()
     {
         var userId = GetCurrentUserId();
-        var userTypeId = User.FindFirst("UserTypeId")?.Value;
+        var userTypeId = GetCurrentUserTypeId();
 
         if (userId == null || userTypeId == null)
             return Unauthorized();
 
-        if (userTypeId == "2")
+        if (UserRoles.IsTeacher(userTypeId.Value))
         {
             var ownCourses = _context.Courses
                 .Include(c => c.Teacher)
@@ -111,7 +111,7 @@ public class CourseController : ControllerBase
     [HttpPost("join")]
     public IActionResult JoinCourse([FromBody] string password)
     {
-        if (User.FindFirst("UserTypeId")?.Value == "2")
+        if (IsCurrentUserTeacher())
             return BadRequest("Teachers cannot enroll in courses.");
 
         var userId = GetCurrentUserId();
@@ -822,6 +822,18 @@ public class CourseController : ControllerBase
         return userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId)
             ? userId
             : null;
+    }
+
+    private int? GetCurrentUserTypeId()
+    {
+        var roleClaim = User.FindFirst("UserTypeId")?.Value;
+        return int.TryParse(roleClaim, out var roleId) ? roleId : null;
+    }
+
+    private bool IsCurrentUserTeacher()
+    {
+        var roleId = GetCurrentUserTypeId();
+        return roleId != null && UserRoles.IsTeacher(roleId.Value);
     }
 
     private string GetResourceDirectory()

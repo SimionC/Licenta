@@ -1,64 +1,83 @@
-﻿using App.Server.Models;
-using App.Server.ORM;
+using App.Server.Models;
 using App.Server.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authorization;
 
 namespace App.Server.Controllers;
 
-//Purpose: Authentication endpoints (register, login, me) and cookie sign-in.
-//Inputs/Outputs: Receives RegisterModel/LoginModel; sets cookie claims; returns lightweight identity payload.
-//Depends on: App.Server/Services/AuthService.cs, cookie auth configured in App.Server/Program.cs.
+//Purpose: Authentication endpoints for admin-created accounts, login, current user, and password changes.
+//Inputs/Outputs: Receives account/login/password DTOs; sets or clears cookie sessions.
+//Depends on: App.Server/Services/AuthService.cs and cookie auth configured in App.Server/Program.cs.
 
 [ApiController]
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AuthService _authService; 
+    private readonly AuthService _authService;
 
-    public AuthController(AuthService authService   )
+    public AuthController(AuthService authService)
     {
         _authService = authService;
     }
 
-    //Trigger: POST register.
-    //Guards: Rejects when AuthService says existing user.
-    //Actions: Builds claims, signs in cookie principal.
-    //Result: 200 OK + active session.
-    [AllowAnonymous]
-    [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterModel registerModel)
+    [Authorize]
+    [HttpGet("users")]
+    public IActionResult GetUsers()
     {
-        var result = _authService.Register(registerModel);
+        if (!IsCurrentUserAdmin())
+            return Forbid();
+
+        return Ok(_authService.GetUsers());
+    }
+
+    [Authorize]
+    [HttpPost("users")]
+    public IActionResult CreateUser(RegisterModel registerModel)
+    {
+        if (!IsCurrentUserAdmin())
+            return Forbid();
+
+        if (!UserRoles.IsKnownRole(registerModel.UserTypeId))
+            return BadRequest("Unsupported role.");
+
+        if (string.IsNullOrWhiteSpace(registerModel.Email) ||
+            string.IsNullOrWhiteSpace(registerModel.Nume) ||
+            string.IsNullOrWhiteSpace(registerModel.Prenume))
+            return BadRequest("First name, last name, and email are required.");
+
+        if (UserRoles.IsStudent(registerModel.UserTypeId) && string.IsNullOrWhiteSpace(registerModel.StudentId))
+            return BadRequest("Student ID is required for student accounts.");
+
+        if (!UserRoles.IsStudent(registerModel.UserTypeId))
+            registerModel.StudentId = null;
+
+        var result = _authService.CreateAccount(registerModel);
 
         if (result == null)
-            return BadRequest();
+            return BadRequest("Account could not be created. Check role, email, and student id uniqueness.");
 
-        var claims = CreateClaims(result);
+        return Ok(result);
+    }
 
-        var claimsIdentity = new ClaimsIdentity(
-            claims, CookieAuthenticationDefaults.AuthenticationScheme);
+    [Authorize]
+    [HttpPost("users/{id:int}/reset-password")]
+    public IActionResult ResetPassword(int id)
+    {
+        if (!IsCurrentUserAdmin())
+            return Forbid();
 
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(claimsIdentity));
+        var result = _authService.ResetPassword(id);
+        return result == null ? NotFound() : Ok(result);
+    }
 
-        return Ok();
-    }    
-    
     [AllowAnonymous]
     [HttpPost("login")]
-    //Trigger: POST login.
-    //Guards: Invalid credentials return bad request.
-    //Actions: Builds claims including userId and role info, signs in.
-    //Result: 200 OK + active session.
     public async Task<IActionResult> Login(LoginModel loginModel)
     {
-        RegisterModel? result = _authService.Login(loginModel);
+        var result = _authService.Login(loginModel);
 
         if (result == null)
             return BadRequest();
@@ -75,26 +94,72 @@ public class AuthController : ControllerBase
         return Ok();
     }
 
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(ChangePasswordModel model)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var changed = _authService.ChangePassword(userId.Value, model.NewPassword);
+        if (!changed)
+            return BadRequest("Password must be at least 8 characters.");
+
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Ok();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Ok();
+    }
+
     [HttpGet("me")]
-    //Trigger: GET current user.
-    //Guards: Requires authenticated identity.
-    //Actions: Reads claims Name/Email/UserTypeId.
-    //Result: Returns name/email/userType (teacher/student).
     public IActionResult Me()
     {
         if (User.Identity?.IsAuthenticated != true)
             return Unauthorized();
 
-        var name = User.FindFirst("Name")?.Value;
-        var email = User.FindFirst("Email")?.Value;
-        var userTypeId = User.FindFirst("UserTypeId")?.Value;
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var profile = _authService.GetProfileById(userId.Value);
+        if (profile == null)
+            return Unauthorized();
 
         return Ok(new
         {
-            name,
-            email,
-            userType = userTypeId == "2" ? "teacher" : "student"
+            id = profile.Id,
+            name = profile.Nume,
+            lastName = profile.Prenume,
+            email = profile.Email,
+            userType = UserRoles.GetName(profile.UserTypeId),
+            userTypeId = profile.UserTypeId,
+            mustChangePassword = profile.MustChangePassword
         });
+    }
+
+    private bool IsCurrentUserAdmin()
+    {
+        var userTypeId = GetCurrentUserTypeId();
+        return userTypeId != null && UserRoles.IsAdmin(userTypeId.Value);
+    }
+
+    private int? GetCurrentUserId()
+    {
+        var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("userId")?.Value;
+        return int.TryParse(idClaim, out var userId) ? userId : null;
+    }
+
+    private int? GetCurrentUserTypeId()
+    {
+        var roleClaim = User.FindFirst("UserTypeId")?.Value;
+        return int.TryParse(roleClaim, out var roleId) ? roleId : null;
     }
 
     private static List<Claim> CreateClaims(RegisterModel user)
@@ -109,9 +174,8 @@ public class AuthController : ControllerBase
             new Claim("Email", user.Email),
             new Claim("UserTypeId", user.UserTypeId.ToString()),
             new Claim("StudentId", user.StudentId ?? string.Empty),
+            new Claim("MustChangePassword", user.MustChangePassword.ToString()),
             new Claim("userId", user.Id.ToString())
         };
     }
-
-
 }

@@ -1,6 +1,7 @@
-﻿using App.Server.Models;
+using App.Server.Models;
 using App.Server.ORM;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Cryptography;
 
 //Purpose: Registration/login business rules and credential checks.
 //Inputs/Outputs: Accepts register/login DTOs; writes user records and returns profile model on successful login.
@@ -11,40 +12,62 @@ namespace App.Server.Services;
 public class AuthService
 {
     private static readonly PasswordHasher<User> PasswordHasher = new();
-    private AppDbContext _dbContext;
+    private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    private readonly AppDbContext _dbContext;
 
     public AuthService(AppDbContext dbContext)
     {
         _dbContext = dbContext;
     }
-    
-    public RegisterModel? Register(RegisterModel registerModel)
+
+    public CreatedAccountModel? CreateAccount(RegisterModel registerModel)
     {
-        User? user = _dbContext.Users.Where(u => u.Email == registerModel.Email || u.StudentId == registerModel.StudentId).FirstOrDefault();
+        if (!UserRoles.IsKnownRole(registerModel.UserTypeId))
+            return null;
+
+        var email = registerModel.Email.Trim();
+        var studentId = string.IsNullOrWhiteSpace(registerModel.StudentId)
+            ? null
+            : registerModel.StudentId.Trim();
+
+        var user = _dbContext.Users
+            .Where(u => u.Email.ToLower() == email.ToLower() ||
+                (studentId != null && u.StudentId == studentId))
+            .FirstOrDefault();
         if (user != null)
-            return null; 
+            return null;
+
+        var temporaryPassword = GenerateTemporaryPassword();
 
         user = new()
         {
-            Email = registerModel.Email,
-            Nume = registerModel.Nume,
-            Prenume = registerModel.Prenume,
-            StudentId = registerModel.StudentId,
+            Email = email,
+            Nume = registerModel.Nume.Trim(),
+            Prenume = registerModel.Prenume.Trim(),
+            StudentId = studentId,
             Password = string.Empty,
-            UserTypeId = registerModel.UserTypeId
+            UserTypeId = registerModel.UserTypeId,
+            MustChangePassword = true
         };
 
-        user.Password = PasswordHasher.HashPassword(user, registerModel.Password);
+        user.Password = PasswordHasher.HashPassword(user, temporaryPassword);
 
         _dbContext.Add(user);
         _dbContext.SaveChanges();
 
-        return ToRegisterModel(user);
-    }    
-    
+        return new CreatedAccountModel
+        {
+            User = ToAccountModel(user),
+            TemporaryPassword = temporaryPassword
+        };
+    }
+
     public RegisterModel? Login(LoginModel loginModel)
     {
-        User? user = _dbContext.Users.Where(u => u.Email.ToLower() == loginModel.Email.ToLower()).FirstOrDefault();
+        var email = loginModel.Email.Trim();
+        var user = _dbContext.Users
+            .Where(u => u.Email.ToLower() == email.ToLower())
+            .FirstOrDefault();
 
         if (user == null)
             return null;
@@ -54,7 +77,56 @@ public class AuthService
         if (verificationResult == PasswordVerificationResult.Success || verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
             return ToRegisterModel(user);
 
-        return null; 
+        return null;
+    }
+
+    public RegisterModel? GetProfileById(int userId)
+    {
+        var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+        return user == null ? null : ToRegisterModel(user);
+    }
+
+    public List<AccountModel> GetUsers()
+    {
+        return _dbContext.Users
+            .OrderBy(u => u.Nume)
+            .ThenBy(u => u.Prenume)
+            .ThenBy(u => u.Email)
+            .Select(u => ToAccountModel(u))
+            .ToList();
+    }
+
+    public CreatedAccountModel? ResetPassword(int userId)
+    {
+        var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+            return null;
+
+        var temporaryPassword = GenerateTemporaryPassword();
+        user.Password = PasswordHasher.HashPassword(user, temporaryPassword);
+        user.MustChangePassword = true;
+        _dbContext.SaveChanges();
+
+        return new CreatedAccountModel
+        {
+            User = ToAccountModel(user),
+            TemporaryPassword = temporaryPassword
+        };
+    }
+
+    public bool ChangePassword(int userId, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
+            return false;
+
+        var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+            return false;
+
+        user.Password = PasswordHasher.HashPassword(user, newPassword);
+        user.MustChangePassword = false;
+        _dbContext.SaveChanges();
+        return true;
     }
 
     private static RegisterModel ToRegisterModel(User user)
@@ -67,7 +139,28 @@ public class AuthService
             Prenume = user.Prenume,
             Password = string.Empty,
             StudentId = user.StudentId,
-            UserTypeId = user.UserTypeId
+            UserTypeId = user.UserTypeId,
+            MustChangePassword = user.MustChangePassword
         };
+    }
+
+    private static AccountModel ToAccountModel(User user)
+    {
+        return new AccountModel
+        {
+            Id = user.Id,
+            Email = user.Email,
+            Nume = user.Nume,
+            Prenume = user.Prenume,
+            StudentId = user.StudentId,
+            UserTypeId = user.UserTypeId,
+            Role = UserRoles.GetName(user.UserTypeId),
+            MustChangePassword = user.MustChangePassword
+        };
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        return $"Temp-{RandomNumberGenerator.GetString(TemporaryPasswordCharacters, 10)}!";
     }
 }

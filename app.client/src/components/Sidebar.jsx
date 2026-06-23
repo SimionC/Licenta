@@ -1,14 +1,18 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, FileText } from 'lucide-react';
+import { BookOpen, FileText, LayoutDashboard, Users } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import './Sidebar.css';
 
 /**
- * Purpose: global navigation shell for dashboard, courses, and notes areas.
+ * Purpose: global navigation shell for dashboard, courses, notes, and admin accounts.
  * Contract: route links are hardcoded and should mirror App route map.
  */
 
 const Sidebar = () => {
+    const { user } = useAuth();
+    const isAdmin = user?.userType === 'admin';
+
     return (
         <div className="sidebar">
             <div className="logo">
@@ -34,6 +38,13 @@ const Sidebar = () => {
                     <FileText size={18} />
                     <span>Notes</span>
                 </NavLink>
+
+                {isAdmin && (
+                    <NavLink to="/accounts" className="menu-item">
+                        <Users size={18} />
+                        <span>Accounts</span>
+                    </NavLink>
+                )}
             </nav>
         </div>
     );

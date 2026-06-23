@@ -1,4 +1,5 @@
 using App.Server.ORM;
+using App.Server.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -25,7 +26,8 @@ public class DashboardController : ControllerBase
         var userId = GetCurrentUserId();
         if (userId == null) return Unauthorized();
 
-        var isTeacher = User.FindFirst("UserTypeId")?.Value == "2";
+        var roleId = GetCurrentUserTypeId();
+        var isTeacher = roleId != null && UserRoles.IsTeacher(roleId.Value);
         var recentCourses = isTeacher
             ? await GetTeacherCourses(userId.Value)
             : await GetStudentCourses(userId.Value);
@@ -37,7 +39,7 @@ public class DashboardController : ControllerBase
 
         return Ok(new
         {
-            Role = isTeacher ? "teacher" : "student",
+            Role = roleId == null ? UserRoles.StudentName : UserRoles.GetName(roleId.Value),
             RecentCourses = recentCourses,
             RecentNotes = recentNotes,
             UrgentAssignments = urgentAssignments
@@ -234,6 +236,12 @@ public class DashboardController : ControllerBase
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return int.TryParse(claim, out var id) ? id : null;
+    }
+
+    private int? GetCurrentUserTypeId()
+    {
+        var claim = User.FindFirst("UserTypeId")?.Value;
+        return int.TryParse(claim, out var roleId) ? roleId : null;
     }
 
     public class DashboardCourseItem

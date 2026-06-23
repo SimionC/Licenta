@@ -1,17 +1,18 @@
-﻿import React from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { useAuth } from './hooks/useAuth';
-// Import components
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import AllCoursesPage from './pages/AllCoursesPage';
 import CoursePage from './pages/CoursePage';
 import NotesPage from './pages/NotesPage';
 import NoteEditorPage from './pages/NoteEditorPage';
 import CollaborationDetailPage from './pages/CollaborationDetailPage';
+import AccountsPage from './pages/AccountsPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import PasswordChangeRoute from './components/PasswordChangeRoute';
 
 //IMPORT MARKDOWN EDITOR
 import 'katex/dist/katex.min.css';       //npm install react-markdown remark-gfm remark-math rehype-katex katex
@@ -19,11 +20,9 @@ import 'highlight.js/styles/github.css'; //npm install rehype-highlight highligh
 
 /**
  * Purpose: Central route table and top-level auth bootstrap for userType/email.
- * API touched: GET /api/Auth/Me (fetch + axios).
- * State contract: userType drives role-based pages (teacher/student) and localStorage mirrors identity.
+ * API touched: GET /api/Auth/Me.
+ * State contract: userType drives role-based pages and localStorage mirrors identity.
  */
-
-// Runs once to hydrate identity from cookie session and persist basic profile.
 
 function App() {
     const { user } = useAuth();
@@ -31,16 +30,36 @@ function App() {
 
     return (
         <Routes>
-            {/* Public Routes */}
             <Route path="/" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/courses/all" element={<AllCoursesPage userType={userType} />} />
-            <Route path="/courses/:courseId" element={<CoursePage />} />
-            {/* Notes - protected only (create/edit routes are protected below) */}
-            {/*<Route path="/notes/:noteGuid" element={<NoteEditorPage />} />*/}
-            {/* protected note routes */}
-            {/* Wrap components that require authentication with ProtectedRoute */}
+            <Route path="/change-password" element={
+                <PasswordChangeRoute>
+                    <ChangePasswordPage />
+                </PasswordChangeRoute>
+            } />
+
+            <Route path="/dashboard" element={
+                <ProtectedRoute>
+                    <DashboardPage />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/courses/all" element={
+                <ProtectedRoute>
+                    <AllCoursesPage userType={userType} />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/courses/:courseId" element={
+                <ProtectedRoute>
+                    <CoursePage />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/accounts" element={
+                <ProtectedRoute>
+                    <AccountsPage />
+                </ProtectedRoute>
+            } />
 
             <Route path="/notes" element={
                 <ProtectedRoute>
@@ -48,21 +67,18 @@ function App() {
                 </ProtectedRoute>
             } />
 
-            {/* Route for creating a new regular note */}
             <Route path="/notes/new" element={
                 <ProtectedRoute>
                     <NoteEditorPage />
                 </ProtectedRoute>
             } />
 
-            {/* Route for editing an existing regular note */}
             <Route path="/notes/:noteGuid" element={
                 <ProtectedRoute>
                     <NoteEditorPage />
                 </ProtectedRoute>
             } />
 
-            {/* Route for viewing collaboration details (e.g., listing notes in a collaboration) */}
             <Route path="/collaborations/:collabId" element={
                 <ProtectedRoute>
                     <CollaborationDetailPage />
@@ -80,9 +96,7 @@ function App() {
                     <NoteEditorPage />
                 </ProtectedRoute>
             } />
-
         </Routes>
-
     );
 }
 

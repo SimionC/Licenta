@@ -27,6 +27,8 @@ public partial class User
     [Required]
     public int UserTypeId { get; set; }
 
+    public bool MustChangePassword { get; set; }
+
 
     // Foreign Keys 
     [ForeignKey("UserTypeId")]
