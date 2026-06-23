@@ -178,9 +178,9 @@ const AllCoursesPage = ({ userType }) => {
     };
 
     return (
-        <div style={{ display: 'flex', backgroundColor: '#FBF6E9', minHeight: '100vh' }}>
+        <div className="app-layout-page courses-list-page">
             <Sidebar />
-            <div style={{ flex: 1, padding: '3rem 4rem' }}>
+            <div className="app-page-main">
                 <div className="dashboard-main">
                     <div className="dashboard-left">
 

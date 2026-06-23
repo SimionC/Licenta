@@ -1,0 +1,104 @@
+C++ questions for self evaluation
+
+What is the size of an int variable (consider a 32/64 bit VS2019 compiler)?
+What is the size of a short int variable (a 32/64 bit VS2019 compiler is considered)?
+What is the size of a long int variable (a 32/64 bit VS2019 compiler is considered)?
+What is the size of a long long int variable (a 32/64 bit VS2019 compiler is considered)?
+What is the size of a bool variable (a 32-bit VS2019 compiler is considered)?
+What is the size of a float variable (a 32-bit VS2019 compiler is considered)?
+What is the size of a double variable (a 32-bit VS2019 compiler is considered)?
+What is the size of a long double variable (a 32-bit VS2019 compiler is considered)?
+What is the size of a char variable (a 32-bit VS2019 compiler is considered)?
+What is the size of a pointer to int - int * (a 32-bit VS2019 compiler is considered)?
+What is the size of a pointer to char - char * (a 32-bit VS2019 compiler is considered)?
+What are the possible values for a boolean expression ?
+What is the keyword this in C ++?
+What does represent this in the constructor?
+What does represent this in the destructor?
+What does represent this in a class member function?
+What does represent this in a static function?
+What does represent this in the copy constructor?
+What does represent this in the overloaded operator =?
+What is a member function?
+What is a static function?
+What is a static attribute?
+What is a constant attribute?
+When can a constant attribute be initialized?
+What means overload?
+What is the utility of overloading?
+What is overriding?
+What is the use of overriding?
+What is a virtual function?
+How is the concept of polymorphism implemented in C ++?
+What are the access modifiers and what visibility does it offer to the member data / functions in case of class derivation?
+In what context is the private access modifier useful?
+What are the types of constructors in a class and what is the role of each?
+What is the difference between the role of the = operator and that of the copy constructor?
+When is the copy constructor called?
+When is the = operator called?
+What is a memory leak ?
+What is a dangling pointer?
+What is the role of the destructor?
+When is the destructor called?
+What is HEAP memory?
+How do you allocate memory space in HEAP?
+How is memory freed in HEAP?
+How is a memory leak generated?
+What is the role of accessory functions in the class?
+What is the role of friend functions in classes and what are their characteristics?
+What is the concept of encapsulation?
+What is the difference between overriding and overloading?
+How can the size of a char vector (static vs dynamic) be found?
+What is the default visibility within a class?
+List three ways to use the * operator in C++.
+Why are accessor functions generally used instead of making the entire class public?
+What type (class) is the object cin?
+What type (class) is the cout object?
+What is the STL the abbreviation?
+Give an example of an STL container (optional).
+Give an example of an STL algorithm  (optional).
+By what types of methods can an operator be overloaded?
+By what types of methods can the + for (object + int) operator be overloaded?
+By what types of methods can the + operator for (int + object) be overloaded?
+When should "friend" be used in the context of overloading operators?
+What does the copy constructor?
+What is the name of the destructor?
+What is the difference between a variable and an attribute?
+In what context is the protected access modifier useful?
+What is the difference between class and struct specifiers?
+What is a class?
+What is an object?
+What is a class instance?
+What is a constructor?
+What is the term up-casting?
+What is the term down-casting?
+What is a class framework?
+Can constant methods be defined?
+What is the order of execution of the constructors within the class hierarchies?
+What is the order of execution of the destructors within the class hierarchies?
+What role do virtual functions play in class hierarchies?
+What is a pure virtual function?
+What is an abstract class?
+What restrictions does an abstract class impose?
+How is multiple inheritance achieved in C ++?
+What are inline functions?
+What is the “is a” concept? Exemplify
+What is the “has a” concept? Examples
+What is virtual inheritance?
+At what point does overriding actually take place?
+At what point does the overloading actually take place?
+What is the default visibility within a structure?
+How can a type 1:M relationship be modeled between two classes?
+How can a type 1:1 relationship be modeled between two classes?
+How can you do a base/parent to sub-class cast?
+How do we solve the problem of the deadly diamond of death in the context of multiple inheritance?
+In what order are the constructors called in case of a multiple inheritance?
+How is the problem of a template method not working on a certain type of date?
+How do you define a pointer that can manage any type of memory area?
+What is the term late-binding?
+What is the term early-binding?
+What is the utility of virtual functions?
+What can abstract classes be used for?
+Can a pointer to an abstract class be used to handle objects such as derived classes?
+What is the usefulness of constant attributes?
+How do you define a class method that does not receive the this pointer?

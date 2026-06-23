@@ -118,6 +118,36 @@ public class AuthController : ControllerBase
         return Ok();
     }
 
+    [Authorize]
+    [HttpGet("profile")]
+    public IActionResult Profile()
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var profile = _authService.GetAccountProfileById(userId.Value);
+        if (profile == null)
+            return Unauthorized();
+
+        return Ok(profile);
+    }
+
+    [Authorize]
+    [HttpPut("profile")]
+    public IActionResult UpdateProfile(UpdateProfileModel model)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var profile = _authService.UpdateProfile(userId.Value, model);
+        if (profile == null)
+            return BadRequest("First name and last name are required.");
+
+        return Ok(profile);
+    }
+
     [HttpGet("me")]
     public IActionResult Me()
     {
@@ -140,6 +170,7 @@ public class AuthController : ControllerBase
             email = profile.Email,
             userType = UserRoles.GetName(profile.UserTypeId),
             userTypeId = profile.UserTypeId,
+            studentId = profile.StudentId,
             mustChangePassword = profile.MustChangePassword
         });
     }

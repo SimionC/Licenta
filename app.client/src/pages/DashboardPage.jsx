@@ -93,9 +93,9 @@ const DashboardPage = () => {
     }));
 
     return (
-        <div style={{ display: 'flex', backgroundColor: '#FBF6E9', minHeight: '100vh' }}>
+        <div className="app-layout-page dashboard-page">
             <Sidebar />
-            <div style={{ flex: 1, padding: '3rem 4rem' }}>
+            <div className="app-page-main">
                 <div className="dashboard-main">
                     <div className="dashboard-left">
                         <h1 className="dashboard-title">Dashboard</h1>

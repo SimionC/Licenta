@@ -38,6 +38,7 @@ public partial class AppDbContext : DbContext
     public DbSet<Course> Courses { get; set; } = null!;
     public DbSet<CourseNote> CoursesNotes { get; set; } = null!;
     public DbSet<CourseResource> CourseResources { get; set; } = null!;
+    public DbSet<CourseUserActivity> CourseUserActivities { get; set; } = null!;
     public DbSet<CourseWork> CourseWork { get; set; } = null!;
     public DbSet<CourseWorkResource> CourseWorkResources { get; set; } = null!;
     public DbSet<Grade> Grades { get; set; } = null!;
@@ -112,6 +113,22 @@ public partial class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(sw => sw.NoteSnapshotId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CourseUserActivity>()
+            .HasIndex(a => new { a.UserId, a.CourseId })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseUserActivity>()
+            .HasOne(a => a.User)
+            .WithMany()
+            .HasForeignKey(a => a.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseUserActivity>()
+            .HasOne(a => a.Course)
+            .WithMany()
+            .HasForeignKey(a => a.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         OnModelCreatingPartial(modelBuilder);
     }

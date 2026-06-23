@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { BookOpen, FileText, LayoutDashboard, Users } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { BookOpen, FileText, LayoutDashboard, LogOut, UserRound, Users } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Sidebar.css';
 
@@ -11,7 +11,22 @@ import './Sidebar.css';
 
 const Sidebar = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const isAdmin = user?.userType === 'admin';
+    const displayName = user ? `${user.name || ''} ${user.lastName || ''}`.trim() : 'Account';
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/Auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+            });
+        } finally {
+            localStorage.removeItem('userEmail');
+            localStorage.removeItem('userType');
+            navigate('/');
+        }
+    };
 
     return (
         <div className="sidebar">
@@ -46,6 +61,21 @@ const Sidebar = () => {
                     </NavLink>
                 )}
             </nav>
+
+            <div className="sidebar-user-actions">
+                <NavLink to="/account" className="menu-item sidebar-account-link">
+                    <UserRound size={18} />
+                    <span>
+                        <strong>{displayName || 'Account'}</strong>
+                        <small>{user?.userType || 'Profile'}</small>
+                    </span>
+                </NavLink>
+
+                <button type="button" className="menu-item sidebar-logout-btn" onClick={handleLogout}>
+                    <LogOut size={18} />
+                    <span>Logout</span>
+                </button>
+            </div>
         </div>
     );
 };

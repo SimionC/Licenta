@@ -64,3 +64,35 @@
         color: white;
         font-weight: 600;
     }
+
+.sidebar-user-actions {
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: auto;
+    padding-top: 1rem;
+}
+
+.sidebar-account-link span {
+    display: grid;
+    gap: 0.1rem;
+}
+
+.sidebar-account-link small {
+    font-size: 0.78rem;
+    font-weight: 500;
+    opacity: 0.72;
+    text-transform: capitalize;
+}
+
+.sidebar-logout-btn {
+    background: transparent;
+    border: 0;
+    width: 100%;
+}
+
+.sidebar-logout-btn:hover {
+    background-color: #fee2e2;
+    color: #991b1b;
+}

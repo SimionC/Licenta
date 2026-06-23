@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import './App.css';
 import { useAuth } from './hooks/useAuth';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -10,6 +11,7 @@ import NotesPage from './pages/NotesPage';
 import NoteEditorPage from './pages/NoteEditorPage';
 import CollaborationDetailPage from './pages/CollaborationDetailPage';
 import AccountsPage from './pages/AccountsPage';
+import AccountPage from './pages/AccountPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import PasswordChangeRoute from './components/PasswordChangeRoute';
@@ -27,6 +29,11 @@ import 'highlight.js/styles/github.css'; //npm install rehype-highlight highligh
 function App() {
     const { user } = useAuth();
     const userType = user?.userType || "";
+
+    React.useEffect(() => {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.dataset.theme = savedTheme;
+    }, []);
 
     return (
         <Routes>
@@ -58,6 +65,12 @@ function App() {
             <Route path="/accounts" element={
                 <ProtectedRoute>
                     <AccountsPage />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/account" element={
+                <ProtectedRoute>
+                    <AccountPage />
                 </ProtectedRoute>
             } />
 

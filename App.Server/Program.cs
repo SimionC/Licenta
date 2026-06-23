@@ -1,6 +1,7 @@
 using App.Server.ORM;
 using App.Server.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -27,7 +28,13 @@ builder.Services.AddScoped<AuthService>();
 
 // Fix: Use "DefaultConnection" to match appsettings.json
 builder.Services.AddDbContext<AppDbContext>((config) => {
-    config.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
+    var connectionBuilder = new SqliteConnectionStringBuilder(
+        builder.Configuration.GetConnectionString("DefaultConnection"))
+    {
+        DefaultTimeout = 30
+    };
+
+    config.UseSqlite(connectionBuilder.ToString());
 });
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

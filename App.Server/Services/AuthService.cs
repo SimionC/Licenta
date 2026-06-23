@@ -86,6 +86,28 @@ public class AuthService
         return user == null ? null : ToRegisterModel(user);
     }
 
+    public AccountModel? GetAccountProfileById(int userId)
+    {
+        var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+        return user == null ? null : ToAccountModel(user);
+    }
+
+    public AccountModel? UpdateProfile(int userId, UpdateProfileModel model)
+    {
+        if (string.IsNullOrWhiteSpace(model.Nume) || string.IsNullOrWhiteSpace(model.Prenume))
+            return null;
+
+        var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
+        if (user == null)
+            return null;
+
+        user.Nume = model.Nume.Trim();
+        user.Prenume = model.Prenume.Trim();
+        _dbContext.SaveChanges();
+
+        return ToAccountModel(user);
+    }
+
     public List<AccountModel> GetUsers()
     {
         return _dbContext.Users
@@ -154,6 +176,7 @@ public class AuthService
             Prenume = user.Prenume,
             StudentId = user.StudentId,
             UserTypeId = user.UserTypeId,
+            UserType = UserRoles.GetName(user.UserTypeId),
             Role = UserRoles.GetName(user.UserTypeId),
             MustChangePassword = user.MustChangePassword
         };

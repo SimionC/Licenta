@@ -1,0 +1,92 @@
+import React, { useState } from 'react';
+
+const PasswordChangeForm = ({ onChanged, submitLabel = 'Save new password' }) => {
+    const [formData, setFormData] = useState({
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [message, setMessage] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const handleChange = (event) => {
+        const { name, value } = event.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setMessage('');
+
+        if (formData.newPassword.length < 8) {
+            setMessage('Password must be at least 8 characters.');
+            return;
+        }
+
+        if (formData.newPassword !== formData.confirmPassword) {
+            setMessage('The passwords do not match.');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const response = await fetch('/api/Auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ newPassword: formData.newPassword })
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || 'Password could not be changed.');
+            }
+
+            setFormData({ newPassword: '', confirmPassword: '' });
+            onChanged?.();
+        } catch (error) {
+            setMessage(error.message || 'Password could not be changed.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            {message && (
+                <div className="alert alert-warning" role="alert">
+                    {message}
+                </div>
+            )}
+
+            <div className="mb-3">
+                <label className="form-label">New password</label>
+                <input
+                    name="newPassword"
+                    type="password"
+                    className="form-control"
+                    value={formData.newPassword}
+                    onChange={handleChange}
+                    required
+                />
+            </div>
+
+            <div className="mb-3">
+                <label className="form-label">Confirm password</label>
+                <input
+                    name="confirmPassword"
+                    type="password"
+                    className="form-control"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                />
+            </div>
+
+            <button type="submit" className="btn btn-green w-100" disabled={saving}>
+                {saving ? 'Saving...' : submitLabel}
+            </button>
+        </form>
+    );
+};
+
+export default PasswordChangeForm;

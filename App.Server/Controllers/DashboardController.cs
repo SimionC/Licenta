@@ -52,15 +52,22 @@ public class DashboardController : ControllerBase
             .Where(uc => uc.UserId == userId)
             .Include(uc => uc.Course)
             .ThenInclude(c => c.Teacher)
-            .OrderByDescending(uc => uc.CourseId)
+            .GroupJoin(
+                _context.CourseUserActivities.Where(a => a.UserId == userId),
+                uc => uc.CourseId,
+                activity => activity.CourseId,
+                (uc, activities) => new { UserCourse = uc, Activity = activities.FirstOrDefault() })
+            .OrderByDescending(item => item.Activity != null ? item.Activity.LastAccessedAt : DateTime.MinValue)
+            .ThenByDescending(item => item.UserCourse.CourseId)
             .Take(4)
-            .Select(uc => new DashboardCourseItem
+            .Select(item => new DashboardCourseItem
             {
-                Id = uc.Course.Id,
-                Title = uc.Course.Title,
-                Description = uc.Course.Description,
-                IsClosed = uc.Course.IsClosed,
-                TeacherName = (uc.Course.Teacher.Nume + " " + uc.Course.Teacher.Prenume).Trim()
+                Id = item.UserCourse.Course.Id,
+                Title = item.UserCourse.Course.Title,
+                Description = item.UserCourse.Course.Description,
+                IsClosed = item.UserCourse.Course.IsClosed,
+                TeacherName = (item.UserCourse.Course.Teacher.Nume + " " + item.UserCourse.Course.Teacher.Prenume).Trim(),
+                LastAccessedAt = item.Activity != null ? item.Activity.LastAccessedAt : null
             })
             .ToListAsync();
     }
@@ -70,15 +77,22 @@ public class DashboardController : ControllerBase
         return await _context.Courses
             .Include(c => c.Teacher)
             .Where(c => c.TeacherId == userId)
-            .OrderByDescending(c => c.Id)
+            .GroupJoin(
+                _context.CourseUserActivities.Where(a => a.UserId == userId),
+                c => c.Id,
+                activity => activity.CourseId,
+                (course, activities) => new { Course = course, Activity = activities.FirstOrDefault() })
+            .OrderByDescending(item => item.Activity != null ? item.Activity.LastAccessedAt : DateTime.MinValue)
+            .ThenByDescending(item => item.Course.Id)
             .Take(4)
-            .Select(c => new DashboardCourseItem
+            .Select(item => new DashboardCourseItem
             {
-                Id = c.Id,
-                Title = c.Title,
-                Description = c.Description,
-                IsClosed = c.IsClosed,
-                TeacherName = (c.Teacher.Nume + " " + c.Teacher.Prenume).Trim()
+                Id = item.Course.Id,
+                Title = item.Course.Title,
+                Description = item.Course.Description,
+                IsClosed = item.Course.IsClosed,
+                TeacherName = (item.Course.Teacher.Nume + " " + item.Course.Teacher.Prenume).Trim(),
+                LastAccessedAt = item.Activity != null ? item.Activity.LastAccessedAt : null
             })
             .ToListAsync();
     }
@@ -251,6 +265,7 @@ public class DashboardController : ControllerBase
         public string? Description { get; set; }
         public bool IsClosed { get; set; }
         public string? TeacherName { get; set; }
+        public DateTime? LastAccessedAt { get; set; }
     }
 
     public class DashboardNoteItem

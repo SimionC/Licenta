@@ -16,6 +16,17 @@ th, td {
     padding-right: 1rem;
 }
 
+.app-layout-page {
+    display: flex;
+    background-color: #FBF6E9;
+    min-height: 100vh;
+}
+
+.app-page-main {
+    flex: 1;
+    padding: 3rem 4rem;
+}
+
 .btn-green {
     background-color: #118B50 !important;
     color: white;
@@ -423,5 +434,426 @@ th, td {
     .accounts-temp-password {
         align-items: flex-start;
         flex-direction: column;
+    }
+}
+
+/* ACCOUNT PAGE */
+.account-page {
+    display: flex;
+    min-height: 100vh;
+}
+
+.account-main {
+    margin-left: 300px;
+    padding: 2rem;
+    width: calc(100% - 300px);
+}
+
+.account-header {
+    margin-bottom: 1.5rem;
+}
+
+.account-header h1 {
+    color: #18230F;
+    font-size: 2.6rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.account-header p {
+    color: #64748b;
+    margin-top: 0.35rem;
+}
+
+.account-layout {
+    display: grid;
+    gap: 1.25rem;
+    max-width: 900px;
+}
+
+.account-card {
+    background: #fff;
+    border: 1px solid #e7eadf;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 14px rgba(24, 35, 15, 0.06);
+}
+
+.account-card-title {
+    align-items: center;
+    color: #18230F;
+    display: flex;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.account-card-title h2 {
+    font-size: 1.1rem;
+    margin: 0;
+}
+
+.account-form-grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-form label {
+    color: #334155;
+    display: grid;
+    font-weight: 600;
+    gap: 0.35rem;
+}
+
+.account-form input {
+    border: 1px solid #d6dccd;
+    border-radius: 6px;
+    font: inherit;
+    padding: 0.65rem 0.75rem;
+}
+
+.account-form input:focus {
+    border-color: #5DB996;
+    box-shadow: 0 0 0 3px rgba(93, 185, 150, 0.18);
+    outline: none;
+}
+
+.account-form input[readonly] {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.account-save-btn {
+    gap: 0.45rem;
+    margin-top: 1rem;
+}
+
+.account-preference-row {
+    align-items: center;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.account-preference-row p,
+.account-muted {
+    color: #64748b;
+    margin: 0.25rem 0 0;
+}
+
+.theme-toggle {
+    background: #e5e7eb;
+    border: 0;
+    border-radius: 999px;
+    color: #334155;
+    font-weight: 700;
+    min-width: 70px;
+    padding: 0.45rem 0.85rem;
+}
+
+.theme-toggle.active {
+    background: #118B50;
+    color: #fff;
+}
+
+.account-secondary-btn {
+    background: #fff;
+    border: 1px solid #d6dccd;
+    border-radius: 6px;
+    color: #18230F;
+    font-weight: 700;
+    margin-top: 1rem;
+    padding: 0.65rem 0.9rem;
+}
+
+.account-secondary-btn:hover {
+    border-color: #5DB996;
+    color: #118B50;
+}
+
+/* DARK MODE */
+html[data-theme="dark"] body {
+    background-color: #111827;
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] #root {
+    background-color: #111827;
+}
+
+html[data-theme="dark"] .app-layout-page,
+html[data-theme="dark"] .dashboard-page,
+html[data-theme="dark"] .courses-list-page,
+html[data-theme="dark"] .notes-page,
+html[data-theme="dark"] .course-page-container,
+html[data-theme="dark"] .note-editor-page,
+html[data-theme="dark"] .collaboration-page,
+html[data-theme="dark"] .account-page,
+html[data-theme="dark"] .accounts-page {
+    background-color: #111827 !important;
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] .sidebar,
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .accounts-card,
+html[data-theme="dark"] .dashboard-right,
+html[data-theme="dark"] .dashboard-empty-card,
+html[data-theme="dark"] .account-card,
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .courses-card,
+html[data-theme="dark"] .course-assignment-box,
+html[data-theme="dark"] .notes-workspace-sidebar,
+html[data-theme="dark"] .notes-workspace-main,
+html[data-theme="dark"] .notes-card,
+html[data-theme="dark"] .notes-empty-state,
+html[data-theme="dark"] .notes-search-row,
+html[data-theme="dark"] .course-card,
+html[data-theme="dark"] .course-content-card,
+html[data-theme="dark"] .course-section,
+html[data-theme="dark"] .course-tab-content,
+html[data-theme="dark"] .course-edit-box,
+html[data-theme="dark"] .resource-upload-box,
+html[data-theme="dark"] .course-empty-state,
+html[data-theme="dark"] .assignment-panel,
+html[data-theme="dark"] .submission-row,
+html[data-theme="dark"] .grade-row,
+html[data-theme="dark"] .student-grade-card,
+html[data-theme="dark"] .note-content-section,
+html[data-theme="dark"] .note-content-box,
+html[data-theme="dark"] .note-content-display,
+html[data-theme="dark"] .note-header-folder,
+html[data-theme="dark"] .note-folder-readonly {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] .menu-item,
+html[data-theme="dark"] .accounts-card-title,
+html[data-theme="dark"] .account-card-title,
+html[data-theme="dark"] .accounts-header h1,
+html[data-theme="dark"] .account-header h1,
+html[data-theme="dark"] .dashboard-title,
+html[data-theme="dark"] .section-header h4,
+html[data-theme="dark"] .courses-card-title,
+html[data-theme="dark"] .cab-title,
+html[data-theme="dark"] .cab-weight,
+html[data-theme="dark"] .notes-sidebar-title,
+html[data-theme="dark"] .notes-title,
+html[data-theme="dark"] .course-title,
+html[data-theme="dark"] .student-grade-card summary,
+html[data-theme="dark"] .student-grade-card summary span,
+html[data-theme="dark"] .student-grade-card summary strong,
+html[data-theme="dark"] .grade-value,
+html[data-theme="dark"] .submission-row strong,
+html[data-theme="dark"] .note-title,
+html[data-theme="dark"] .note-content-header h3 {
+    color: #f9fafb;
+}
+
+html[data-theme="dark"] .note-title {
+    -webkit-text-fill-color: #86efac;
+    background: none;
+}
+
+html[data-theme="dark"] .menu-item:hover {
+    background-color: #374151;
+}
+
+html[data-theme="dark"] .menu-item.active {
+    background-color: #118B50;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] .form-control {
+    background-color: #111827;
+    border-color: #4b5563;
+    color: #f9fafb;
+}
+
+html[data-theme="dark"] input[readonly],
+html[data-theme="dark"] .form-control:disabled {
+    background-color: #243042;
+    color: #cbd5e1;
+}
+
+html[data-theme="dark"] .account-header p,
+html[data-theme="dark"] .accounts-header p,
+html[data-theme="dark"] .account-preference-row p,
+html[data-theme="dark"] .account-muted,
+html[data-theme="dark"] .account-form label,
+html[data-theme="dark"] .accounts-form label,
+html[data-theme="dark"] .notes-subtitle,
+html[data-theme="dark"] .notes-folder-heading,
+html[data-theme="dark"] .notes-desc,
+html[data-theme="dark"] .notes-footer,
+html[data-theme="dark"] .courses-card-teacher,
+html[data-theme="dark"] .cab-desc,
+html[data-theme="dark"] .cab-meta,
+html[data-theme="dark"] .course-teacher,
+html[data-theme="dark"] .note-collaboration-context,
+html[data-theme="dark"] .note-content-placeholder {
+    color: #cbd5e1;
+}
+
+html[data-theme="dark"] .account-secondary-btn,
+html[data-theme="dark"] .accounts-reset-btn,
+html[data-theme="dark"] .accounts-temp-password code,
+html[data-theme="dark"] .notes-btn.secondary,
+html[data-theme="dark"] .notes-icon-btn,
+html[data-theme="dark"] .notes-folder-edit-actions button,
+html[data-theme="dark"] .secondary-action-btn,
+html[data-theme="dark"] .tab,
+html[data-theme="dark"] .btn-cancel,
+html[data-theme="dark"] .note-back-btn,
+html[data-theme="dark"] .note-action-btn.secondary {
+    background: #334155;
+    border-color: #64748b;
+    color: #f9fafb;
+}
+
+html[data-theme="dark"] .secondary-action-btn:hover,
+html[data-theme="dark"] .tab:hover,
+html[data-theme="dark"] .btn-cancel:hover {
+    background: #475569;
+    border-color: #94a3b8;
+    color: #ffffff;
+}
+
+html[data-theme="dark"] .tab.active {
+    background: #5DB996;
+    border-color: #86efac;
+    color: #052e16;
+}
+
+html[data-theme="dark"] .upload-btn,
+html[data-theme="dark"] .btn-confirm,
+html[data-theme="dark"] .notes-btn,
+html[data-theme="dark"] .courses-join-btn {
+    background: #5DB996;
+    color: #052e16;
+    font-weight: 800;
+}
+
+html[data-theme="dark"] .upload-btn:hover,
+html[data-theme="dark"] .btn-confirm:hover,
+html[data-theme="dark"] .notes-btn:hover,
+html[data-theme="dark"] .courses-join-btn:hover {
+    background: #86efac;
+    color: #052e16;
+}
+
+html[data-theme="dark"] .modal-header h3,
+html[data-theme="dark"] .notes-modal-header h3,
+html[data-theme="dark"] .form-group label,
+html[data-theme="dark"] .notes-modal-label {
+    color: #f9fafb;
+}
+
+html[data-theme="dark"] .modal-close,
+html[data-theme="dark"] .notes-modal-header button {
+    color: #f9fafb;
+}
+
+html[data-theme="dark"] .notes-collab-member-form,
+html[data-theme="dark"] .add-collaborator-form,
+html[data-theme="dark"] .permissions-info,
+html[data-theme="dark"] .no-collaborators {
+    background: #111827;
+    border-color: #4b5563;
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] .notes-collab-member-form input,
+html[data-theme="dark"] .notes-collab-member-form select,
+html[data-theme="dark"] .notes-modal-label input {
+    background: #0f172a;
+    border-color: #64748b;
+    color: #f9fafb;
+}
+
+html[data-theme="dark"] .notes-collab-member-list p,
+html[data-theme="dark"] .confirm-modal-text,
+html[data-theme="dark"] .submission-row p,
+html[data-theme="dark"] .grade-row p {
+    color: #cbd5e1;
+}
+
+html[data-theme="dark"] .notes-collab-member-form button {
+    background: #5DB996;
+    color: #052e16;
+    font-weight: 800;
+}
+
+html[data-theme="dark"] .notes-view-btn,
+html[data-theme="dark"] .notes-folder-select {
+    color: #e5e7eb;
+}
+
+html[data-theme="dark"] .notes-view-btn.active,
+html[data-theme="dark"] .notes-folder-row.active .notes-folder-select {
+    background: rgba(93, 185, 150, 0.18);
+    color: #86efac;
+}
+
+html[data-theme="dark"] .notes-tag,
+html[data-theme="dark"] .course-status--open,
+html[data-theme="dark"] .note-collaboration-context strong {
+    background: rgba(93, 185, 150, 0.16);
+    border-color: rgba(93, 185, 150, 0.35);
+    color: #86efac;
+}
+
+html[data-theme="dark"] .dashboard-data-message,
+html[data-theme="dark"] .notes-message {
+    background: #431407;
+    border-color: #9a3412;
+    color: #fed7aa;
+}
+
+html[data-theme="dark"] .courses-card-header {
+    background: #118B50;
+}
+
+html[data-theme="dark"] .course-assignment-box {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme="dark"] .cab-extra {
+    border-top-color: #475569;
+}
+
+html[data-theme="dark"] .cab-status--expired {
+    background: #7f1d1d;
+    color: #fecaca;
+}
+
+html[data-theme="dark"] .cab-status--pending {
+    background: #713f12;
+    color: #fde68a;
+}
+
+html[data-theme="dark"] .cab-status--completed {
+    background: #14532d;
+    color: #bbf7d0;
+}
+
+html[data-theme="dark"] .cab-action {
+    background: #5DB996;
+    color: #052e16;
+    font-weight: 800;
+}
+
+html[data-theme="dark"] .cab-action:hover {
+    background: #86efac;
+    color: #052e16;
+}
+
+@media (max-width: 800px) {
+    .account-form-grid {
+        grid-template-columns: 1fr;
     }
 }

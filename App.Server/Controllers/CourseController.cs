@@ -1,6 +1,7 @@
 using App.Server.Models;
 using App.Server.ORM;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Data.Sqlite;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -57,6 +58,8 @@ public class CourseController : ControllerBase
 
         _context.Courses.Add(course);
         _context.SaveChanges();
+
+        TrackCourseAccess(user.Id, course.Id);
 
         course.Teacher = user;
         return Ok(MapCourseDetail(course, isTeacherOwner: true, isEnrolled: false));
@@ -135,6 +138,8 @@ public class CourseController : ControllerBase
             _context.SaveChanges();
         }
 
+        TrackCourseAccess(userId.Value, course.Id);
+
         return Ok(course);
     }
 
@@ -183,6 +188,8 @@ public class CourseController : ControllerBase
 
         if (!isTeacherOwner && !isEnrolled)
             return Forbid();
+
+        TrackCourseAccess(userId.Value, id);
 
         return Ok(MapCourseDetail(course, isTeacherOwner, isEnrolled));
     }
@@ -788,6 +795,57 @@ public class CourseController : ControllerBase
     private bool IsStudentEnrolled(int courseId, int userId)
     {
         return _context.UsersCourses.Any(uc => uc.CourseId == courseId && uc.UserId == userId);
+    }
+
+    private void TrackCourseAccess(int userId, int courseId)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try
+            {
+                UpsertCourseAccess(userId, courseId);
+                return;
+            }
+            catch (DbUpdateException ex) when (IsTransientCourseActivityError(ex))
+            {
+                _context.ChangeTracker.Clear();
+
+                if (attempt == 2)
+                    return;
+
+                Thread.Sleep(50 * (attempt + 1));
+            }
+        }
+    }
+
+    private void UpsertCourseAccess(int userId, int courseId)
+    {
+        var activity = _context.CourseUserActivities
+            .FirstOrDefault(a => a.UserId == userId && a.CourseId == courseId);
+
+        if (activity == null)
+        {
+            _context.CourseUserActivities.Add(new CourseUserActivity
+            {
+                UserId = userId,
+                CourseId = courseId,
+                LastAccessedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            activity.LastAccessedAt = DateTime.UtcNow;
+        }
+
+        _context.SaveChanges();
+    }
+
+    private static bool IsTransientCourseActivityError(DbUpdateException ex)
+    {
+        if (ex.InnerException is not SqliteException sqlite)
+            return false;
+
+        return sqlite.SqliteErrorCode is 5 or 6 or 19;
     }
 
     private async Task<bool> CanAccessNoteForSnapshot(Note note, int userId)
