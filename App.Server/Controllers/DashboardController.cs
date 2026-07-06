@@ -150,6 +150,7 @@ public class DashboardController : ControllerBase
             .ToListAsync();
 
         return assignments
+            .Where(cw => AssignmentIsStillOpen(cw.Deadline))
             .Select(cw =>
             {
                 var urgency = GetStudentUrgency(cw.Deadline);
@@ -167,7 +168,6 @@ public class DashboardController : ControllerBase
             })
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Deadline ?? DateTime.MaxValue)
-            .Take(6)
             .ToList();
     }
 
@@ -190,6 +190,7 @@ public class DashboardController : ControllerBase
             .ToDictionaryAsync(g => g.CourseWorkId, g => g.Count);
 
         return assignments
+            .Where(cw => AssignmentIsStillOpen(cw.Deadline))
             .Select(cw =>
             {
                 ungradedCounts.TryGetValue(cw.Id, out var ungraded);
@@ -207,43 +208,47 @@ public class DashboardController : ControllerBase
                     UngradedCount = ungraded
                 };
             })
-            .Where(a => a.UngradedCount > 0 || a.SortOrder < 4)
             .OrderBy(a => a.SortOrder)
             .ThenBy(a => a.Deadline ?? DateTime.MaxValue)
-            .Take(6)
             .ToList();
     }
 
     private static (string Status, string Label, int SortOrder) GetStudentUrgency(DateTime? deadline)
     {
-        if (deadline == null) return ("ok", "No deadline", 4);
+        if (deadline == null) return ("ok", "Upcoming", 3);
 
         var now = DateTime.Now;
         var due = EndOfDayIfDateOnly(deadline.Value);
-        if (due < now) return ("urgent", "Overdue", 0);
-        if (due.Date == now.Date) return ("urgent", "Due today", 1);
-        if (due <= now.AddDays(3)) return ("warning", "Due soon", 2);
+        if (due <= now.AddDays(3)) return ("urgent", "Urgent", 0);
+        if (due <= now.AddDays(10)) return ("warning", "Due soon", 1);
         return ("ok", "Upcoming", 3);
     }
 
     private static (string Status, string Label, int SortOrder) GetTeacherUrgency(DateTime? deadline, int ungradedCount)
     {
-        if (ungradedCount > 0) return ("urgent", $"{ungradedCount} ungraded", 0);
-        if (deadline == null) return ("ok", "No deadline", 5);
+        if (deadline == null) return ("ok", "Upcoming", 3);
 
         var now = DateTime.Now;
         var due = EndOfDayIfDateOnly(deadline.Value);
-        if (due >= now && due <= now.AddDays(3)) return ("warning", "Closing soon", 1);
-        if (due < now && due >= now.AddDays(-7)) return ("ok", "Recently closed", 2);
-        if (due >= now) return ("ok", "Upcoming", 4);
-        return ("ok", "Closed", 5);
+        if (due <= now.AddDays(3)) return ("urgent", "Urgent", 0);
+        if (due <= now.AddDays(10)) return ("warning", "Due soon", 1);
+        return ("ok", "Upcoming", 3);
     }
 
     private static DateTime EndOfDayIfDateOnly(DateTime value)
     {
-        return value.TimeOfDay == TimeSpan.Zero
-            ? value.Date.AddDays(1).AddTicks(-1)
+        var localValue = value.Kind == DateTimeKind.Utc
+            ? value.ToLocalTime()
             : value;
+
+        return localValue.TimeOfDay == TimeSpan.Zero
+            ? localValue.Date.AddDays(1).AddTicks(-1)
+            : localValue;
+    }
+
+    private static bool AssignmentIsStillOpen(DateTime? deadline)
+    {
+        return deadline == null || EndOfDayIfDateOnly(deadline.Value) >= DateTime.Now;
     }
 
     private int? GetCurrentUserId()

@@ -36,11 +36,20 @@ const getDueDateStatus = (value) => {
     }
 
     if (due < now) return 'closed';
-    if (due.toDateString() === now.toDateString()) return 'urgent';
 
-    const soon = new Date(now);
-    soon.setDate(soon.getDate() + 3);
-    return due <= soon ? 'warning' : 'ok';
+    const urgentLimit = new Date(now);
+    urgentLimit.setDate(urgentLimit.getDate() + 3);
+    if (due <= urgentLimit) return 'urgent';
+
+    const soonLimit = new Date(now);
+    soonLimit.setDate(soonLimit.getDate() + 10);
+    return due <= soonLimit ? 'warning' : 'ok';
+};
+
+const getDueDateLabel = (status) => {
+    if (status === 'urgent') return 'Urgent';
+    if (status === 'warning') return 'Due soon';
+    return 'Upcoming';
 };
 
 const DashboardPage = () => {
@@ -74,14 +83,19 @@ const DashboardPage = () => {
         loadDashboard();
     }, []);
 
-    const assignmentCards = dashboard.urgentAssignments.map(assignment => ({
-        id: assignment.id,
-        courseId: assignment.courseId,
-        title: assignment.title,
-        course: assignment.courseTitle,
-        due: `${assignment.label} - ${formatDate(assignment.deadline)}`,
-        status: getDueDateStatus(assignment.deadline)
-    }));
+    const assignmentCards = dashboard.urgentAssignments
+        .map(assignment => {
+            const status = getDueDateStatus(assignment.deadline);
+            return {
+                id: assignment.id,
+                courseId: assignment.courseId,
+                title: assignment.title,
+                course: assignment.courseTitle,
+                due: `${getDueDateLabel(status)} - ${formatDate(assignment.deadline)}`,
+                status
+            };
+        })
+        .filter(assignment => assignment.status !== 'closed');
 
     const noteCards = dashboard.recentNotes.map(note => ({
         ...note,

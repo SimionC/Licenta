@@ -434,8 +434,13 @@ namespace App.Server.Controllers
                 return Forbid();
             
             // 3️. delete only notes and member records that belong to this collaboration
-            var notes = _context.Notes
-                .Where(n => n.CollaborationId == id);
+            var notes = await _context.Notes
+                .Where(n => n.CollaborationId == id)
+                .ToListAsync();
+            var noteIds = notes.Select(n => n.Id).ToList();
+            var snapshots = _context.NoteSnapshots
+                .Where(s => noteIds.Contains(s.SourceNoteId));
+            _context.NoteSnapshots.RemoveRange(snapshots);
             _context.Notes.RemoveRange(notes);
 
             var members = _context.CollaborationMembers
@@ -445,6 +450,44 @@ namespace App.Server.Controllers
             // 4️. delete the collaboration itself
             _context.Collaborations.Remove(collab);
             await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        //Trigger: DELETE api/Collaborations/{id}/leave.
+        //Guards: Requester must be a non-owner collaboration member.
+        //Actions: Removes only the requester's membership.
+        //Result: 204 NoContent.
+        [HttpDelete("{id}/leave")]
+        public async Task<IActionResult> LeaveCollaboration(int id)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            var collaboration = await _context.Collaborations
+                .FirstOrDefaultAsync(c => c.Id == id);
+            if (collaboration == null)
+            {
+                return NotFound();
+            }
+
+            if (collaboration.UserId == userId.Value)
+            {
+                return BadRequest("Owners cannot leave their own collaboration. Delete the workspace instead.");
+            }
+
+            var member = await _context.CollaborationMembers
+                .FirstOrDefaultAsync(cm => cm.CollaborationId == id && cm.UserId == userId.Value);
+            if (member == null)
+            {
+                return NotFound();
+            }
+
+            _context.CollaborationMembers.Remove(member);
+            await _context.SaveChangesAsync();
+
             return NoContent();
         }
 

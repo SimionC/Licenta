@@ -280,6 +280,89 @@ public class CourseController : ControllerBase
         return Ok(MapCourseWork(courseWork, resources, null));
     }
 
+    [HttpDelete("{courseId}/coursework/{courseWorkId}")]
+    public async Task<IActionResult> DeleteCourseWork(int courseId, int courseWorkId)
+    {
+        var courseWork = await _context.CourseWork
+            .Include(cw => cw.Course)
+            .FirstOrDefaultAsync(cw => cw.Id == courseWorkId && cw.CourseId == courseId);
+        if (courseWork == null) return NotFound();
+
+        return await DeleteCourseWorkCore(courseWork);
+    }
+
+    [HttpDelete("coursework/{courseWorkId}")]
+    public async Task<IActionResult> DeleteCourseWorkByAssignmentId(int courseWorkId)
+    {
+        var courseWork = await _context.CourseWork
+            .Include(cw => cw.Course)
+            .FirstOrDefaultAsync(cw => cw.Id == courseWorkId);
+        if (courseWork == null) return NotFound();
+
+        return await DeleteCourseWorkCore(courseWork);
+    }
+
+    private async Task<IActionResult> DeleteCourseWorkCore(CourseWork courseWork)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+        if (courseWork.Course.TeacherId != userId.Value) return Forbid();
+
+        var courseWorkId = courseWork.Id;
+        var resources = await _context.CourseWorkResources
+            .Where(r => r.CourseWorkId == courseWorkId)
+            .ToListAsync();
+
+        var submissions = await _context.SubmittedWork
+            .Where(sw => sw.CourseWorkId == courseWorkId)
+            .ToListAsync();
+
+        var filePaths = resources
+            .Select(resource => Path.Combine(GetCourseWorkResourceDirectory(), resource.StoredFileName))
+            .Concat(submissions
+            .Where(sw => !string.IsNullOrWhiteSpace(sw.StoredFileName))
+            .Select(sw => Path.Combine(GetSubmissionDirectory(), sw.StoredFileName!)))
+            .ToList();
+
+        var gradeIds = submissions
+            .Where(sw => sw.GradeId.HasValue)
+            .Select(sw => sw.GradeId!.Value)
+            .Distinct()
+            .ToList();
+        var snapshotIds = submissions
+            .Where(sw => sw.NoteSnapshotId.HasValue)
+            .Select(sw => sw.NoteSnapshotId!.Value)
+            .Distinct()
+            .ToList();
+
+        var grades = await _context.Grades
+            .Where(g => gradeIds.Contains(g.Id))
+            .ToListAsync();
+        var snapshots = await _context.NoteSnapshots
+            .Where(s => snapshotIds.Contains(s.Id))
+            .ToListAsync();
+
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        _context.CourseWorkResources.RemoveRange(resources);
+        _context.SubmittedWork.RemoveRange(submissions);
+        _context.CourseWork.Remove(courseWork);
+        await _context.SaveChangesAsync();
+
+        _context.Grades.RemoveRange(grades);
+        _context.NoteSnapshots.RemoveRange(snapshots);
+        await _context.SaveChangesAsync();
+
+        await transaction.CommitAsync();
+
+        foreach (var fullPath in filePaths)
+        {
+            if (System.IO.File.Exists(fullPath)) System.IO.File.Delete(fullPath);
+        }
+
+        return NoContent();
+    }
+
     [HttpGet("{courseId}/courseworks")]
     public IActionResult GetCourseWorksForCourse(int courseId)
     {

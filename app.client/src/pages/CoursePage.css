@@ -310,6 +310,17 @@
     margin: 0;
 }
 
+.confirm-modal-error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: #b91c1c;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    margin: 0.85rem 0 0;
+    padding: 0.7rem 0.85rem;
+}
+
 .course-edit-box,
 .resource-upload-box,
 .course-empty-state,

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, Plus, Settings, Shield, Users, X } from 'lucide-react';
+import { ArrowLeft, FileText, LogOut, Plus, Settings, Shield, Trash2, Users, X } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import NotesNoteCard from '../components/NotesNoteCard';
 import CollaboratorsSection from '../components/CollaboratorsSection';
@@ -21,6 +21,8 @@ export default function CollaborationDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [confirmAction, setConfirmAction] = useState(null);
+    const [actionBusy, setActionBusy] = useState(false);
 
     const loadWorkspace = async () => {
         setLoading(true);
@@ -59,6 +61,41 @@ export default function CollaborationDetailPage() {
 
     const canManageMembers = collab?.myRole === 'owner';
     const roleLabel = collab?.myRole || 'viewer';
+
+    const handleWorkspaceAction = async () => {
+        if (!confirmAction || actionBusy) return;
+
+        setActionBusy(true);
+        try {
+            const endpoint = confirmAction === 'delete'
+                ? `/api/Collaborations/${collabId}`
+                : `/api/Collaborations/${collabId}/leave`;
+
+            const res = await fetch(endpoint, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            if (!res.ok) {
+                const message = await res.text();
+                throw new Error(message || 'Workspace action failed.');
+            }
+
+            navigate('/notes', {
+                replace: true,
+                state: {
+                    removedCollaborationId: Number(collabId),
+                    workspaceAction: confirmAction
+                }
+            });
+        } catch (err) {
+            setError(err.message || 'Could not update workspace.');
+            setConfirmAction(null);
+            setSettingsOpen(false);
+        } finally {
+            setActionBusy(false);
+        }
+    };
 
     return (
         <div className="notes-page">
@@ -191,6 +228,66 @@ export default function CollaborationDetailPage() {
                                         setCollaborators={(members) => setCollab(prev => ({ ...prev, members }))}
                                         parentIsEditing={canManageMembers}
                                     />
+                                    <div className="collaboration-danger-zone">
+                                        <div>
+                                            <h4>{canManageMembers ? 'Delete workspace' : 'Leave workspace'}</h4>
+                                            <p>
+                                                {canManageMembers
+                                                    ? 'Deleting this collaboration removes the workspace and all notes inside it for everyone.'
+                                                    : 'Leaving removes your access to this workspace. The collaboration and its notes stay available to the remaining members.'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className={canManageMembers ? 'collaboration-danger-btn' : 'collaboration-leave-btn'}
+                                            onClick={() => setConfirmAction(canManageMembers ? 'delete' : 'leave')}
+                                        >
+                                            {canManageMembers ? <Trash2 size={16} /> : <LogOut size={16} />}
+                                            {canManageMembers ? 'Delete workspace' : 'Leave workspace'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {confirmAction && (
+                            <div className="note-modal-overlay">
+                                <div className="note-share-modal collaboration-confirm-modal">
+                                    <div className="note-confirm-header">
+                                        <div>
+                                            <h3>{confirmAction === 'delete' ? 'Delete workspace?' : 'Leave workspace?'}</h3>
+                                            <p className="note-modal-subtitle">
+                                                {confirmAction === 'delete'
+                                                    ? `This will permanently delete "${collab.name}" and all notes inside it.`
+                                                    : `You will no longer be able to open "${collab.name}" from your notes sidebar.`}
+                                            </p>
+                                        </div>
+                                        <button onClick={() => setConfirmAction(null)} disabled={actionBusy}>
+                                            <X size={18} />
+                                        </button>
+                                    </div>
+                                    <div className="collaboration-confirm-actions">
+                                        <button
+                                            type="button"
+                                            className="note-confirm-cancel"
+                                            onClick={() => setConfirmAction(null)}
+                                            disabled={actionBusy}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="note-confirm-danger"
+                                            onClick={handleWorkspaceAction}
+                                            disabled={actionBusy}
+                                        >
+                                            {actionBusy
+                                                ? 'Working...'
+                                                : confirmAction === 'delete'
+                                                    ? 'Delete workspace'
+                                                    : 'Leave workspace'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}

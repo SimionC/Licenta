@@ -143,6 +143,9 @@ const CoursePage = () => {
     const [savedGradeIds, setSavedGradeIds] = useState({});
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [editingAssignment, setEditingAssignment] = useState(null);
+    const [assignmentToDelete, setAssignmentToDelete] = useState(null);
+    const [isDeletingAssignment, setIsDeletingAssignment] = useState(false);
+    const [deleteAssignmentError, setDeleteAssignmentError] = useState('');
     const [resourceToDelete, setResourceToDelete] = useState(null);
     const [showDeleteCourseModal, setShowDeleteCourseModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -290,6 +293,38 @@ const CoursePage = () => {
         } else {
             setMessage('Failed to remove resource.');
         }
+    };
+
+    const handleDeleteAssignment = async () => {
+        if (!assignmentToDelete) return;
+
+        setIsDeletingAssignment(true);
+        setDeleteAssignmentError('');
+
+        const res = await fetch(`/api/Course/${courseId}/coursework/${assignmentToDelete.id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (res.ok) {
+            setCourseWorks(prev => prev.filter(assignment => assignment.id !== assignmentToDelete.id));
+            setSubmissionsByAssignment(prev => {
+                const next = { ...prev };
+                delete next[assignmentToDelete.id];
+                return next;
+            });
+            await refreshGrades();
+            setAssignmentToDelete(null);
+            setShowAssignModal(false);
+            setEditingAssignment(null);
+            setMessage('Assignment deleted.');
+        } else {
+            const errorText = await res.text();
+            setDeleteAssignmentError(errorText || `Failed to delete assignment. Server returned ${res.status}.`);
+            setMessage('Failed to delete assignment.');
+        }
+
+        setIsDeletingAssignment(false);
     };
 
     const handleCreateOrUpdateAssignment = async (e) => {
@@ -720,6 +755,18 @@ const CoursePage = () => {
                                 />
                             </div>
                             <div className="modal-actions">
+                                {editingAssignment && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setDeleteAssignmentError('');
+                                            setAssignmentToDelete(editingAssignment);
+                                        }}
+                                        className="btn-danger-confirm"
+                                    >
+                                        Delete
+                                    </button>
+                                )}
                                 <button
                                     type="button"
                                     onClick={() => { setShowAssignModal(false); setEditingAssignment(null); }}
@@ -732,6 +779,43 @@ const CoursePage = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {assignmentToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content confirm-modal">
+                        <div className="modal-header">
+                            <h3>Delete assignment?</h3>
+                            <button className="modal-close" onClick={() => setAssignmentToDelete(null)} disabled={isDeletingAssignment}>
+                                x
+                            </button>
+                        </div>
+                        <p className="confirm-modal-text">
+                            Are you sure you want to delete <strong>{assignmentToDelete.title}</strong>? This will remove its submissions, grades, and supporting files.
+                        </p>
+                        {deleteAssignmentError && (
+                            <p className="confirm-modal-error">{deleteAssignmentError}</p>
+                        )}
+                        <div className="modal-actions">
+                            <button
+                                type="button"
+                                className="btn-cancel"
+                                onClick={() => setAssignmentToDelete(null)}
+                                disabled={isDeletingAssignment}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-danger-confirm"
+                                onClick={handleDeleteAssignment}
+                                disabled={isDeletingAssignment}
+                            >
+                                {isDeletingAssignment ? 'Deleting...' : 'Delete assignment'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import NotesNoteCard from '../components/NotesNoteCard';
 import {
@@ -30,6 +30,9 @@ const VIEW_SHARED = 'shared';
 
 const NotesPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const removedCollaborationId = location.state?.removedCollaborationId;
+    const workspaceAction = location.state?.workspaceAction;
     const [notes, setNotes] = useState([]);
     const [recentNotes, setRecentNotes] = useState([]);
     const [sharedNotes, setSharedNotes] = useState([]);
@@ -91,11 +94,17 @@ const NotesPage = () => {
         const collaborationData = unwrap(results[3], 'Could not load collaborations.');
         const shared = unwrap(results[4], 'Could not load shared notes.');
 
-        setNotes(personal.data);
-        setRecentNotes(recent.data);
+        const removeStaleCollaborationItems = (items) => removedCollaborationId
+            ? items.filter(item => item.collaborationId !== removedCollaborationId)
+            : items;
+
+        setNotes(removeStaleCollaborationItems(personal.data));
+        setRecentNotes(removeStaleCollaborationItems(recent.data));
         setFolders(folderData.data);
-        setCollaborations(collaborationData.data);
-        setSharedNotes(shared.data);
+        setCollaborations(removedCollaborationId
+            ? collaborationData.data.filter(collaboration => collaboration.id !== removedCollaborationId)
+            : collaborationData.data);
+        setSharedNotes(removeStaleCollaborationItems(shared.data));
         setRecentMessage(recent.error);
 
         const workspaceErrors = [
@@ -105,13 +114,19 @@ const NotesPage = () => {
             shared.error
         ].filter(Boolean);
 
-        setMessage(workspaceErrors.join(' '));
+        const actionMessage = workspaceAction === 'leave'
+            ? 'You left the collaboration.'
+            : workspaceAction === 'delete'
+                ? 'Collaboration deleted.'
+                : '';
+
+        setMessage([actionMessage, ...workspaceErrors].filter(Boolean).join(' '));
         setLoading(false);
     };
 
     useEffect(() => {
         loadWorkspace();
-    }, []);
+    }, [removedCollaborationId, workspaceAction]);
 
     const folderNameById = useMemo(() => {
         return folders.reduce((acc, folder) => {
