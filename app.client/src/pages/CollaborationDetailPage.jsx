@@ -7,23 +7,30 @@ import CollaboratorsSection from '../components/CollaboratorsSection';
 import '../components/NotesNoteCard.css';
 import './CollaborationStyles.css';
 
-/**
- * Purpose: Collaboration workspace page with member context and contained notes.
- * API touched: GET /api/Collaborations/{collabId}, GET /api/Collaborations/{collabId}/notes.
- * Output contract: opens collaboration notes at /collaborations/{collabId}/notes/{noteGuid}.
- */
 
+ //Purpose: Collaboration workspace page with member context and contained notes
+ 
 export default function CollaborationDetailPage() {
+    // -------------------------
+    // ROUTE AND PAGE STATE
+    // -------------------------
     const { collabId } = useParams();
     const navigate = useNavigate();
+
+    // Loaded workspace data.
     const [collab, setCollab] = useState(null);
     const [notes, setNotes] = useState([]);
+
+    // Page status and modal state.
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [confirmAction, setConfirmAction] = useState(null);
     const [actionBusy, setActionBusy] = useState(false);
 
+    // -------------------------
+    // DATA LOADING
+    // -------------------------
     const loadWorkspace = async () => {
         setLoading(true);
         setError('');
@@ -55,6 +62,9 @@ export default function CollaborationDetailPage() {
         loadWorkspace();
     }, [collabId]);
 
+    // -------------------------
+    // ROLE FLAGS
+    // -------------------------
     const canCreateNotes = useMemo(() => {
         return collab?.myRole === 'owner' || collab?.myRole === 'editor';
     }, [collab?.myRole]);
@@ -62,6 +72,9 @@ export default function CollaborationDetailPage() {
     const canManageMembers = collab?.myRole === 'owner';
     const roleLabel = collab?.myRole || 'viewer';
 
+    // -------------------------
+    // WORKSPACE DELETE / LEAVE ACTION
+    // -------------------------
     const handleWorkspaceAction = async () => {
         if (!confirmAction || actionBusy) return;
 
@@ -99,8 +112,10 @@ export default function CollaborationDetailPage() {
 
     return (
         <div className="notes-page">
+            {/* Page shell: global sidebar plus the selected collaboration workspace. */}
             <Sidebar />
             <main className="collaboration-workspace">
+                {/* Back navigation to the general notes area. */}
                 <button className="collaboration-back-btn" onClick={() => navigate('/notes')}>
                     <ArrowLeft size={18} />
                     Back to notes
@@ -118,6 +133,7 @@ export default function CollaborationDetailPage() {
                     </div>
                 ) : (
                     <>
+                        {/* Workspace header: title, member/note count, role badge, and create-note action. */}
                         <section className="collaboration-hero collaboration-folder-hero">
                             <div>
                                 <div className="collaboration-eyebrow">
@@ -146,6 +162,7 @@ export default function CollaborationDetailPage() {
                             </div>
                         </section>
 
+                        {/* Main workspace layout: member list on the side, notes grid on the right. */}
                         <div className="collaboration-layout">
                             <aside className="collaboration-members-panel">
                                 <div className="collaboration-panel-title">
@@ -206,6 +223,7 @@ export default function CollaborationDetailPage() {
                             </section>
                         </div>
 
+                        {/* Settings modal: manages members and exposes delete/leave workspace action. */}
                         {settingsOpen && (
                             <div className="note-modal-overlay">
                                 <div className="note-share-modal collaboration-settings-modal">
@@ -250,6 +268,7 @@ export default function CollaborationDetailPage() {
                             </div>
                         )}
 
+                        {/* Final confirmation modal for deleting or leaving the workspace. */}
                         {confirmAction && (
                             <div className="note-modal-overlay">
                                 <div className="note-share-modal collaboration-confirm-modal">

@@ -1,4 +1,6 @@
-/* Add these styles to your existing CSS file */
+/* ========================================
+   COLLABORATION CREATE / EDIT FORM
+   ======================================== */
 
 .collaboration-name-input {
     width: 100%;
@@ -33,7 +35,9 @@
     margin-bottom: 1rem;
 }
 
-/* Collaborators Section Styles */
+/* ========================================
+   REUSABLE COLLABORATORS SECTION
+   ======================================== */
 .collaborators-section {
     padding: 1rem;
 }
@@ -239,6 +243,7 @@
         color: #333;
     }
 
+/* Informational box used around collaboration descriptions. */
 .collaboration-info {
     margin-bottom: 1rem;
     padding: 1rem;
@@ -269,6 +274,9 @@
     background: #fafafa;
 }
 
+/* ========================================
+   OLDER SHARING / SETTINGS BOXES
+   ======================================== */
 /* Base styles for the main container of settings boxes */
 .note-sharing-section, /* If this class is also used for collaboration sections on other pages */
 .collaboration-settings-section {
@@ -307,7 +315,7 @@
         margin-bottom: 1rem;
     }
 
-/* You might want to add styles for the new preview toggle button */
+/* Preview toggle button used by collaboration-related editor controls. */
 .preview-toggle-button {
     background-color: #007bff;
     color: white;
@@ -326,6 +334,9 @@
         background-color: #0056b3;
     }
 
+/* ========================================
+   COLLABORATION WORKSPACE PAGE
+   ======================================== */
 .collaboration-workspace {
     flex: 1;
     padding: 32px 48px;
@@ -353,6 +364,7 @@
 .collaboration-hero,
 .collaboration-members-panel,
 .collaboration-notes-panel,
+/* Error card shown when the workspace cannot be opened. */
 .collaboration-error-card {
     background: #fff;
     border: 1px solid #e7eadf;
@@ -535,6 +547,9 @@
     margin-bottom: 1.25rem;
 }
 
+/* ========================================
+   MODALS AND SETTINGS DIALOG
+   ======================================== */
 .note-modal-overlay {
     position: fixed;
     inset: 0;
@@ -643,6 +658,7 @@
     border-radius: 8px;
 }
 
+/* Owner label displayed instead of editable role controls. */
 .collaboration-owner-role {
     display: inline-flex;
     align-items: center;
@@ -651,6 +667,7 @@
     min-height: 34px;
 }
 
+/* Dangerous workspace actions: delete for owner, leave for members. */
 .collaboration-danger-zone {
     border-top: 1px solid #e5e7eb;
     margin-top: 1.25rem;
@@ -704,6 +721,7 @@
     background: #e2e8f0;
 }
 
+/* Final delete/leave confirmation modal. */
 .collaboration-confirm-modal {
     width: min(520px, 100%);
 }
@@ -744,6 +762,9 @@
     opacity: 0.65;
 }
 
+/* ========================================
+   RESPONSIVE LAYOUT
+   ======================================== */
 @media (max-width: 1000px) {
     .collaboration-workspace {
         padding: 20px;

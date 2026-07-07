@@ -1,3 +1,4 @@
+/* Minimal note preview card. */
 .note-card {
     background-color: #ffffff;
     border: 2px solid #E3F0AF;
@@ -16,8 +17,9 @@
 
     .note-card:hover {
         transform: translateY(-4px);
-    }
+}
 
+/* Icon and title inside the note card. */
 .note-icon {
     font-size: 1.8rem;
 }

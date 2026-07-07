@@ -1,10 +1,18 @@
 import { useState } from 'react';
 
+/**
+ * Purpose: small editable course overview card.
+ * Contract: parent owns the actual course update through onUpdateCourse.
+ */
 export default function CourseOverview({ course, onUpdateCourse }) {
+    // -------------------------
+    // EDIT STATE
+    // -------------------------
     const [editMode, setEditMode] = useState(false);
     const [title, setTitle] = useState(course.title);
     const [description, setDescription] = useState(course.description);
 
+    // Pushes edited title/description back to the parent page.
     const handleSave = () => {
         onUpdateCourse({ ...course, title, description });
         setEditMode(false);
@@ -14,6 +22,7 @@ export default function CourseOverview({ course, onUpdateCourse }) {
         <div className="card p-4 mb-4 shadow-sm">
             {editMode ? (
                 <>
+                    {/* Edit mode: inputs for title and description. */}
                     <div className="mb-3">
                         <label className="form-label">Course Title</label>
                         <input
@@ -37,6 +46,7 @@ export default function CourseOverview({ course, onUpdateCourse }) {
                 </>
             ) : (
                 <>
+                    {/* Read mode: current course info plus edit button. */}
                     <h2>{title}</h2>
                     <p>{description}</p>
                     <button className="btn btn-outline-primary" onClick={() => setEditMode(true)}>Edit Course Info</button>

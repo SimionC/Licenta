@@ -15,6 +15,7 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
 
+/* Top visual block with course icon. */
 .courses-card-header {
     background: #5DB996;
     padding: 2.5rem; /* 💡 More spacing */
@@ -28,6 +29,7 @@
         height: 48px; /* 💡 Larger icon */
     }
 
+/* Card body: title, teacher, status, and view button. */
 .courses-card-body {
     padding: 1.5rem; /* 💡 More inner spacing */
     display: flex;
@@ -78,6 +80,7 @@
         background: #45a776;
     }
 
+/* Join-course button used near the courses list. */
 .courses-join-btn {
     background-color: #5DB996;
     color: white;

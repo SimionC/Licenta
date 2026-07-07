@@ -10,13 +10,16 @@ import { useNavigate } from 'react-router-dom';
 
 const CoursesCourseCard = ({ course }) => {
 
+    // Used to open the selected course details page.
     const navigate = useNavigate();
 
     return (
         <div className="courses-card">
+            {/* Visual header/icon area. */}
             <div className="courses-card-header">
                 <BookOpen size={40} color="white" />
             </div>
+            {/* Course details and navigation action. */}
             <div className="courses-card-body">
                 <div className="courses-card-title-row">
                     <h5 className="courses-card-title">{course.title}</h5>

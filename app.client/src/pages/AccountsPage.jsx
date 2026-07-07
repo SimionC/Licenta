@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar';
 import { useAuth } from '../hooks/useAuth';
 import '../App.css';
 
+// Default values for the admin create-account form.
 const emptyForm = {
     firstName: '',
     lastName: '',
@@ -13,6 +14,7 @@ const emptyForm = {
     studentId: ''
 };
 
+// Maps numeric backend role ids into readable labels for the table.
 const roleLabels = {
     1: 'Student',
     2: 'Teacher',
@@ -21,6 +23,8 @@ const roleLabels = {
 
 const AccountsPage = () => {
     const { user, loading } = useAuth();
+
+    // User list, create form, feedback, and loading/action flags.
     const [users, setUsers] = useState([]);
     const [formData, setFormData] = useState(emptyForm);
     const [temporaryPassword, setTemporaryPassword] = useState(null);
@@ -33,6 +37,9 @@ const AccountsPage = () => {
 
     const sortedUsers = useMemo(() => users, [users]);
 
+    // -------------------------
+    // LOAD EXISTING ACCOUNTS
+    // -------------------------
     const fetchUsers = async () => {
         setFetching(true);
         setMessage('');
@@ -52,6 +59,9 @@ const AccountsPage = () => {
         fetchUsers();
     }, []);
 
+    // -------------------------
+    // ROUTE GUARDS
+    // -------------------------
     if (loading) {
         return <div>Loading...</div>;
     }
@@ -60,6 +70,9 @@ const AccountsPage = () => {
         return <Navigate to="/dashboard" replace />;
     }
 
+    // -------------------------
+    // FORM AND ACCOUNT ACTIONS
+    // -------------------------
     const handleChange = (event) => {
         const { name, value } = event.target;
         setFormData((prev) => ({
@@ -143,8 +156,10 @@ const AccountsPage = () => {
 
     return (
         <div className="accounts-page">
+            {/* Page shell: sidebar plus admin account-management workspace. */}
             <Sidebar />
             <main className="accounts-main">
+                {/* Page heading. */}
                 <div className="accounts-header">
                     <div>
                         <h1>Accounts</h1>
@@ -154,6 +169,7 @@ const AccountsPage = () => {
 
                 {message && <div className="dashboard-data-message">{message}</div>}
 
+                {/* One-time temporary password display after create/reset actions. */}
                 {temporaryPassword && (
                     <div className="accounts-temp-password">
                         <div>
@@ -165,6 +181,7 @@ const AccountsPage = () => {
                 )}
 
                 <section className="accounts-layout">
+                    {/* Create account form: admin chooses role and fills identity fields. */}
                     <form className="accounts-card accounts-form" onSubmit={handleCreate}>
                         <div className="accounts-card-title">
                             <Plus size={18} />
@@ -230,6 +247,7 @@ const AccountsPage = () => {
                         </button>
                     </form>
 
+                    {/* User table: shows account status and password-regeneration action. */}
                     <section className="accounts-card accounts-list-card">
                         <div className="accounts-card-title">
                             <KeyRound size={18} />

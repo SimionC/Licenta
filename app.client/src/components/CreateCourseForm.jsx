@@ -2,15 +2,17 @@ import React, { useState } from 'react';
 
 /**
  * Purpose: reusable local form component for create/join course flows.
- * API touched: POST /api/Course/join for student enrollment.
- * Note: create path currently builds local object and delegates via onCreate callback.
  */
 
 const CreateCourseForm = ({ onCreate }) => {
+    // -------------------------
+    // LOCAL FORM STATE
+    // -------------------------
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [joinCode, setJoinCode] = useState("");
 
+    // Creates a local course object and passes it back to the parent.
     const handleSubmit = (e) => {
         e.preventDefault();
         if (title && description) {
@@ -26,6 +28,7 @@ const CreateCourseForm = ({ onCreate }) => {
         }
     };
 
+    // Student join flow: sends the entered course code to the backend.
     const handleJoinCourse = async () => {
         const res = await fetch("/api/Course/join", {
             method: "POST",
@@ -44,6 +47,7 @@ const CreateCourseForm = ({ onCreate }) => {
 
     return (
         <>
+            {/* Teacher-side local create-course form. */}
             <form onSubmit={handleSubmit} style={{ marginBottom: '2rem' }}>
                 <h3>Create New Course</h3>
                 <input

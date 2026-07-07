@@ -6,9 +6,9 @@ import App from './App.jsx';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 /**
- * Purpose: Client entrypoint that mounts React app and enables router context.
- * API touched: none directly.
- * Core dependency: BrowserRouter wrapping App for route-based navigation.
+ * Purpose: is the React starting point. It mounts the application into the HTML root element, 
+ * loads Bootstrap styling, and wraps the app in BrowserRouter so the platform can navigate 
+ * between pages without reloading the whole site
  */
 
 ReactDOM.createRoot(document.getElementById('root')).render(

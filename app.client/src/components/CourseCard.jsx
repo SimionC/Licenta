@@ -10,6 +10,7 @@ import './CourseCard.css';
 const CourseCard = ({ course }) => {
     return (
         <div className="course-card">
+            {/* Simple icon/title display for a course preview. */}
             <div className="course-icon">📚</div>
             <h4 className="course-title">{course.title}</h4>
         </div>

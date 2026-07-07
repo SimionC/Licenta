@@ -5,9 +5,9 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import "../App.css";
 
 /**
- * Purpose: Sign-in form and session bootstrap for dashboard access.
+ * Purpose: Sign-in form 
  * API touched: POST /api/Auth/Login, GET /api/Auth/Me.
- * Side effects: stores userEmail/userType in localStorage, then navigates to /dashboard.
+ * Effects: stores userEmail/userType in localStorage, then navigates to /change-password or /dashboard.
  */
 
 const LoginPage = () => {
@@ -42,7 +42,7 @@ const LoginPage = () => {
                 if (meRes.ok) {
                     const me = await meRes.json();
                     localStorage.setItem("userEmail", me.email);
-                    localStorage.setItem("userType", me.userType); // ✅ store userType
+                    localStorage.setItem("userType", me.userType);
                     if (me.mustChangePassword) {
                         navigate('/change-password');
                         return;
@@ -82,6 +82,7 @@ const LoginPage = () => {
                     <div className="card p-4 shadow">
                         <h2 className="text-center mb-4">Login</h2>
                         <form onSubmit={handleSubmit}>
+
                             {/* Email Field */}
                             <div className="mb-3">
                                 <label className="form-label">Email</label>

@@ -6,9 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-//Purpose: Course lifecycle, role rules, resources, assignments, submissions, and grading endpoints.
-//Inputs/Outputs: Uses body DTOs, multipart files, and current user claims.
-//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Models/CourseModel.cs, App.Server/Models/CourseWorkDTO.cs.
+//Purpose: Course lifecycle, role rules, resources, assignments, submissions, and grading endpoints
 
 [ApiController]
 [Route("api/[controller]")]
@@ -16,13 +14,15 @@ using System.Security.Claims;
 public class CourseController : ControllerBase
 {
     private readonly AppDbContext _context;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IWebHostEnvironment _environment; //used to build file storage paths
 
     public CourseController(AppDbContext context, IWebHostEnvironment environment)
     {
         _context = context;
         _environment = environment;
     }
+
+    // ---------------------------------COURSE LIFECYCLE-----------------------------------------------------
 
     [HttpPost("create")]
     public IActionResult CreateCourse([FromBody] CourseModel model)
@@ -228,6 +228,106 @@ public class CourseController : ControllerBase
         return SetCourseClosedState(id, false);
     }
 
+    // ---------------------------------COURSE RESOURCES-----------------------------------------------------
+
+    [HttpGet("{courseId}/resources")]
+    public IActionResult GetResourcesForCourse(int courseId)
+    {
+        if (!CanAccessCourse(courseId))
+            return Forbid();
+
+        var resources = _context.CourseResources
+            .Where(r => r.CourseId == courseId)
+            .OrderByDescending(r => r.UploadedAt)
+            .ToList()
+            .Select(MapResource);
+
+        return Ok(resources);
+    }
+
+    [HttpPost("{courseId}/resources")]
+    [RequestSizeLimit(50_000_000)]
+    public async Task<IActionResult> UploadResource(int courseId, IFormFile file)
+    {
+        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId);
+        if (course == null) return NotFound();
+
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+        if (course.TeacherId != userId.Value) return Forbid();
+        if (file.Length == 0) return BadRequest("Choose a non-empty file.");
+
+        var uploadDirectory = GetResourceDirectory();
+        Directory.CreateDirectory(uploadDirectory);
+
+        var originalName = Path.GetFileName(file.FileName);
+        var extension = Path.GetExtension(originalName);
+        var storedName = $"{Guid.NewGuid():N}{extension}";
+        var fullPath = Path.Combine(uploadDirectory, storedName);
+
+        await using (var stream = System.IO.File.Create(fullPath))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var resource = new CourseResource
+        {
+            CourseId = courseId,
+            OriginalFileName = originalName,
+            StoredFileName = storedName,
+            ContentType = string.IsNullOrWhiteSpace(file.ContentType)
+                ? "application/octet-stream"
+                : file.ContentType,
+            Size = file.Length,
+            UploadedAt = DateTime.UtcNow
+        };
+
+        _context.CourseResources.Add(resource);
+        await _context.SaveChangesAsync();
+
+        return Ok(MapResource(resource));
+    }
+
+    [HttpGet("resources/{resourceId}/download")]
+    public async Task<IActionResult> DownloadResource(int resourceId)
+    {
+        var resource = await _context.CourseResources.FirstOrDefaultAsync(r => r.Id == resourceId);
+        if (resource == null) return NotFound();
+
+        if (!CanAccessCourse(resource.CourseId))
+            return Forbid();
+
+        var fullPath = Path.Combine(GetResourceDirectory(), resource.StoredFileName);
+        if (!System.IO.File.Exists(fullPath)) return NotFound("File missing from storage.");
+
+        var stream = System.IO.File.OpenRead(fullPath);
+        return File(stream, resource.ContentType, resource.OriginalFileName);
+    }
+
+    [HttpDelete("resources/{resourceId}")]
+    public async Task<IActionResult> DeleteResource(int resourceId)
+    {
+        var resource = await _context.CourseResources
+            .Include(r => r.Course)
+            .FirstOrDefaultAsync(r => r.Id == resourceId);
+        if (resource == null) return NotFound();
+
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+        if (resource.Course.TeacherId != userId.Value) return Forbid();
+
+        var fullPath = Path.Combine(GetResourceDirectory(), resource.StoredFileName);
+        if (System.IO.File.Exists(fullPath))
+            System.IO.File.Delete(fullPath);
+
+        _context.CourseResources.Remove(resource);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // ---------------------------------ASSIGNMENTS / COURSEWORK---------------------------------------------
+
     [HttpPost("{courseId}/coursework")]
     public IActionResult CreateCourseWork(int courseId, [FromBody] CourseWorkDTO dto)
     {
@@ -364,7 +464,7 @@ public class CourseController : ControllerBase
     }
 
     [HttpGet("{courseId}/courseworks")]
-    public IActionResult GetCourseWorksForCourse(int courseId)
+    public IActionResult GetCourseWorksForCourse(int courseId) //all assignments for a course
     {
         if (!CanAccessCourse(courseId))
             return Forbid();
@@ -395,6 +495,8 @@ public class CourseController : ControllerBase
                 resourcesByCourseWork.GetValueOrDefault(cw.Id, Array.Empty<CourseWorkResource>()),
                 submissions.GetValueOrDefault(cw.Id))));
     }
+
+    // ---------------------------------ASSIGNMENT SUPPORTING FILES------------------------------------------
 
     [HttpPost("coursework/{courseWorkId}/supporting-files")]
     [RequestSizeLimit(50_000_000)]
@@ -455,6 +557,8 @@ public class CourseController : ControllerBase
         return NoContent();
     }
 
+    // ---------------------------------STUDENT SUBMISSIONS---------------------------------------------------
+
     [HttpPost("coursework/{courseWorkId}/submission")]
     [RequestSizeLimit(50_000_000)]
     public async Task<IActionResult> UpsertSubmission(int courseWorkId, [FromForm] string? textAnswer, IFormFile? file)
@@ -498,6 +602,8 @@ public class CourseController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(MapSubmission(submission));
     }
+
+    // ---------------------------------NOTE SNAPSHOT SUBMISSIONS--------------------------------------------
 
     [HttpPost("coursework/{courseWorkId}/submit-note")]
     public async Task<IActionResult> SubmitNoteSnapshot(int courseWorkId, [FromBody] SubmitNoteSnapshotModel model)
@@ -570,6 +676,8 @@ public class CourseController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(MapSubmission(submission));
     }
+
+    // ---------------------------------TEACHER SUBMISSIONS / GRADING----------------------------------------
 
     [HttpGet("{courseId}/coursework/{courseWorkId}/submissions")]
     public async Task<IActionResult> GetSubmissionsForCourseWork(int courseId, int courseWorkId)
@@ -673,6 +781,8 @@ public class CourseController : ControllerBase
             submission.OriginalFileName);
     }
 
+    // ---------------------------------GRADES---------------------------------------------------------------
+
     [HttpGet("{courseId}/grades")]
     public async Task<IActionResult> GetGradesForCourse(int courseId)
     {
@@ -753,101 +863,7 @@ public class CourseController : ControllerBase
         });
     }
 
-    [HttpGet("{courseId}/resources")]
-    public IActionResult GetResourcesForCourse(int courseId)
-    {
-        if (!CanAccessCourse(courseId))
-            return Forbid();
-
-        var resources = _context.CourseResources
-            .Where(r => r.CourseId == courseId)
-            .OrderByDescending(r => r.UploadedAt)
-            .ToList()
-            .Select(MapResource);
-
-        return Ok(resources);
-    }
-
-    [HttpPost("{courseId}/resources")]
-    [RequestSizeLimit(50_000_000)]
-    public async Task<IActionResult> UploadResource(int courseId, IFormFile file)
-    {
-        var course = await _context.Courses.FirstOrDefaultAsync(c => c.Id == courseId);
-        if (course == null) return NotFound();
-
-        var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
-        if (course.TeacherId != userId.Value) return Forbid();
-        if (file.Length == 0) return BadRequest("Choose a non-empty file.");
-
-        var uploadDirectory = GetResourceDirectory();
-        Directory.CreateDirectory(uploadDirectory);
-
-        var originalName = Path.GetFileName(file.FileName);
-        var extension = Path.GetExtension(originalName);
-        var storedName = $"{Guid.NewGuid():N}{extension}";
-        var fullPath = Path.Combine(uploadDirectory, storedName);
-
-        await using (var stream = System.IO.File.Create(fullPath))
-        {
-            await file.CopyToAsync(stream);
-        }
-
-        var resource = new CourseResource
-        {
-            CourseId = courseId,
-            OriginalFileName = originalName,
-            StoredFileName = storedName,
-            ContentType = string.IsNullOrWhiteSpace(file.ContentType)
-                ? "application/octet-stream"
-                : file.ContentType,
-            Size = file.Length,
-            UploadedAt = DateTime.UtcNow
-        };
-
-        _context.CourseResources.Add(resource);
-        await _context.SaveChangesAsync();
-
-        return Ok(MapResource(resource));
-    }
-
-    [HttpGet("resources/{resourceId}/download")]
-    public async Task<IActionResult> DownloadResource(int resourceId)
-    {
-        var resource = await _context.CourseResources.FirstOrDefaultAsync(r => r.Id == resourceId);
-        if (resource == null) return NotFound();
-
-        if (!CanAccessCourse(resource.CourseId))
-            return Forbid();
-
-        var fullPath = Path.Combine(GetResourceDirectory(), resource.StoredFileName);
-        if (!System.IO.File.Exists(fullPath)) return NotFound("File missing from storage.");
-
-        var stream = System.IO.File.OpenRead(fullPath);
-        return File(stream, resource.ContentType, resource.OriginalFileName);
-    }
-
-    [HttpDelete("resources/{resourceId}")]
-    public async Task<IActionResult> DeleteResource(int resourceId)
-    {
-        var resource = await _context.CourseResources
-            .Include(r => r.Course)
-            .FirstOrDefaultAsync(r => r.Id == resourceId);
-        if (resource == null) return NotFound();
-
-        var userId = GetCurrentUserId();
-        if (userId == null) return Unauthorized();
-        if (resource.Course.TeacherId != userId.Value) return Forbid();
-
-        var fullPath = Path.Combine(GetResourceDirectory(), resource.StoredFileName);
-        if (System.IO.File.Exists(fullPath))
-            System.IO.File.Delete(fullPath);
-
-        _context.CourseResources.Remove(resource);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
-    }
+    // ---------------------------------ACCESS / AUTH HELPERS------------------------------------------------
 
     private IActionResult SetCourseClosedState(int id, bool isClosed)
     {

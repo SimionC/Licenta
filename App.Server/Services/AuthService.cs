@@ -1,18 +1,19 @@
 using App.Server.Models;
 using App.Server.ORM;
-using Microsoft.AspNetCore.Identity;
-using System.Security.Cryptography;
+using Microsoft.AspNetCore.Identity; //password safety
+using System.Security.Cryptography;  //random generation
 
-//Purpose: Registration/login business rules and credential checks.
+//Purpose:-logic layer- does the actual account work: creating users, checking passwords, hashing passwords, resetting passwords, updating profiles, and reading users from the database.
 //Inputs/Outputs: Accepts register/login DTOs; writes user records and returns profile model on successful login.
 //Depends on: App.Server/ORM/AppDbContext.cs, App.Server/ORM/User.cs.
+//Works hand in hand with AuthController(API layer - it receives the HTTP req)
 
 namespace App.Server.Services;
 
 public class AuthService
 {
     private static readonly PasswordHasher<User> PasswordHasher = new();
-    private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+    private const string TemporaryPasswordCharacters = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"; //no 0,O,I,1 misidentification purposes(my tragedy all these years)
     private readonly AppDbContext _dbContext;
 
     public AuthService(AppDbContext dbContext)
@@ -74,7 +75,8 @@ public class AuthService
 
         var verificationResult = PasswordHasher.VerifyHashedPassword(user, user.Password, loginModel.Password);
 
-        if (verificationResult == PasswordVerificationResult.Success || verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
+        if (verificationResult == PasswordVerificationResult.Success || 
+            verificationResult == PasswordVerificationResult.SuccessRehashNeeded)
             return ToRegisterModel(user);
 
         return null;
@@ -86,6 +88,7 @@ public class AuthService
         return user == null ? null : ToRegisterModel(user);
     }
 
+ 
     public AccountModel? GetAccountProfileById(int userId)
     {
         var user = _dbContext.Users.FirstOrDefault(u => u.Id == userId);
@@ -151,7 +154,7 @@ public class AuthService
         return true;
     }
 
-    private static RegisterModel ToRegisterModel(User user)
+    private static RegisterModel ToRegisterModel(User user) //converts database User into RegisterModel
     {
         return new RegisterModel
         {
@@ -166,7 +169,7 @@ public class AuthService
         };
     }
 
-    private static AccountModel ToAccountModel(User user)
+    private static AccountModel ToAccountModel(User user) //converts database User into AccountModel
     {
         return new AccountModel
         {

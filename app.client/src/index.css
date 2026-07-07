@@ -1,18 +1,24 @@
+/* Global default styles applied to the whole React app. */
+
 :root {
+  /* Base typography used when a component does not define its own font. */
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
+  /* Allows the browser to understand that the app can support light/dark themes. */
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
- // background-color: #242424;
+   // background-color: #242424;
 
+  /* Improves how text is rendered and smoothed in the browser. */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Default styling for links. */
 a {
   font-weight: 500;
   color: #646cff;
@@ -22,6 +28,7 @@ a:hover {
   color: #535bf2;
 }
 
+/* Basic body layout: removes browser margin and sets minimum page size. */
 body {
   margin: 0;
   display: flex;
@@ -30,11 +37,13 @@ body {
   min-height: 100vh;
 }
 
+/* Default heading size for h1 elements. */
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
 
+/* Default button appearance before page-specific styles override it. */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -54,6 +63,7 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* Light-mode adjustments when the user's system prefers a light theme. */
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;

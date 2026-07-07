@@ -6,14 +6,12 @@ using Microsoft.AspNetCore.Authorization;
 using System.Text;
 
 //Purpose: Full notes CRUD + access control (owner/direct share/collaboration member).
-//Inputs/Outputs: Uses current user claims + note guid/collaboration id; maps Note entity to NoteModel DTO.
-//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Models/NoteModel.cs (namespace currently App.Server.ORM).
 
 namespace App.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Require authentication for all endpoints
+    [Authorize] 
     public class NotesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -23,11 +21,9 @@ namespace App.Server.Controllers
             _context = context;
         }
 
-
-        //Trigger: GET api/Notes/test-auth.
-        //Guards: Controller-level authorize.
-        //Actions: Dumps auth state and claims.
-        //Result: Debug auth snapshot.
+        // -------------------------
+        // AUTH DEBUG ENDPOINT
+        // -------------------------
         [HttpGet("test-auth")]
         public IActionResult TestAuth()
         {
@@ -42,10 +38,9 @@ namespace App.Server.Controllers
         }
 
 
-        //Trigger: GET api/Notes/my-notes.
-        //Guards: Requires current user id.
-        //Actions: Filters notes by owner, orders recent first, maps DTO.
-        //Result: User-owned notes list.
+        // -------------------------
+        // NOTE LISTING ENDPOINTS
+        // -------------------------
         [HttpGet("my-notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetMyNotes([FromQuery] int? folderId, [FromQuery] bool noFolder = false)
         {
@@ -75,10 +70,6 @@ namespace App.Server.Controllers
             return Ok(notes.Select(note => MapNote(note)));
         }
 
-        //Trigger: GET api/Notes/shared-with-me.
-        //Guards: Requires current user id.
-        //Actions: Returns personal notes directly shared with the current user.
-        //Result: Shared note list with access role.
         [HttpGet("shared-with-me")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetSharedWithMe()
         {
@@ -109,11 +100,6 @@ namespace App.Server.Controllers
             )));
         }
 
-
-        //Trigger: GET api/Notes/accessible-notes.
-        //Guards: Requires current user id.
-        //Actions: Combines own notes + all collaboration notes user can access + directly shared notes.
-        //Result: Aggregated accessible list.
         [HttpGet("accessible-notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetAccessibleNotes()
         {
@@ -169,11 +155,9 @@ namespace App.Server.Controllers
             }));
         }
 
-
-        //Trigger: GET note by api/Notes/guid(Globally Unique Identifier.
-        //Guards: Denies unless owner, direct shared user, or collaboration member.
-        //Actions: Loads note with related entities, computes role.
-        //Result: Note DTO + X-User-Role response header.
+        // -------------------------
+        // SINGLE NOTE ACCESS
+        // -------------------------
         [HttpGet("{guid}")]
         public async Task<ActionResult<NoteModel>> GetNote(string guid)
         {
@@ -247,9 +231,9 @@ namespace App.Server.Controllers
             return Ok(MapNote(note, userRole ?? "viewer", canEdit, canManageSharing));
         }
 
-        //Trigger: GET api/Notes/{guid}/download?format=md.
-        //Guards: Allows owner, direct shared user, or collaboration member.
-        //Result: Markdown file download for the live note content.
+        // -------------------------
+        // NOTE EXPORT
+        // -------------------------
         [HttpGet("{guid}/download")]
         public async Task<IActionResult> DownloadNote(string guid, [FromQuery] string? format = "md")
         {
@@ -304,9 +288,10 @@ namespace App.Server.Controllers
             return File(bytes, "text/markdown; charset=utf-8", fileName);
         }
 
-        //Trigger: GET api/Notes/{guid}/permissions.
-        //Guards: Owner-only; personal notes only.
-        //Result: Current direct sharing rows for a note.
+ 
+        // -------------------------
+        // DIRECT NOTE SHARING
+        // -------------------------
         [HttpGet("{guid}/permissions")]
         public async Task<ActionResult<IEnumerable<NotePermissionModel>>> GetPermissions(string guid)
         {
@@ -325,9 +310,6 @@ namespace App.Server.Controllers
             return Ok(permissions.Select(MapPermission));
         }
 
-        //Trigger: POST api/Notes/{guid}/permissions.
-        //Guards: Owner-only; personal notes only; registered target user.
-        //Actions: Shares a note by email with viewer/editor role.
         [HttpPost("{guid}/permissions")]
         public async Task<ActionResult<NotePermissionModel>> AddPermission(string guid, NotePermissionSaveModel model)
         {
@@ -370,9 +352,6 @@ namespace App.Server.Controllers
             return CreatedAtAction(nameof(GetPermissions), new { guid }, MapPermission(permission));
         }
 
-        //Trigger: PUT api/Notes/{guid}/permissions/{permissionId}.
-        //Guards: Owner-only; personal notes only.
-        //Actions: Changes viewer/editor role.
         [HttpPut("{guid}/permissions/{permissionId}")]
         public async Task<ActionResult<NotePermissionModel>> UpdatePermission(string guid, int permissionId, NotePermissionSaveModel model)
         {
@@ -398,9 +377,6 @@ namespace App.Server.Controllers
             return Ok(MapPermission(permission));
         }
 
-        //Trigger: DELETE api/Notes/{guid}/permissions/{permissionId}.
-        //Guards: Owner-only; personal notes only.
-        //Actions: Removes direct note access.
         [HttpDelete("{guid}/permissions/{permissionId}")]
         public async Task<IActionResult> DeletePermission(string guid, int permissionId)
         {
@@ -422,10 +398,9 @@ namespace App.Server.Controllers
         }
 
 
-        //Trigger: POST api/Notes/create.
-        //Guards: Requires auth user; if collaborationId is set, user must be a member.
-        //Actions: Creates note with new guid and visibility flag.
-        //Result: 201 Created + note DTO.
+        // -------------------------
+        // NOTE CREATE / UPDATE / DELETE
+        // -------------------------
         [HttpPost("create")]
         public async Task<ActionResult<NoteModel>> CreateNote(NoteModel noteModel)
         {
@@ -478,10 +453,6 @@ namespace App.Server.Controllers
         }
 
 
-        //Trigger: PUT by  api/Notes/guid.
-        //Guards: Owner or collaboration owner/editor only.
-        //Actions: Updates title/content/visibility/timestamp; owner may change collaboration link.
-        //Result: Updated note DTO.
         [HttpPut("{guid}")]
         public async Task<ActionResult<NoteModel>> UpdateNote(string guid, NoteModel noteModel)
         {
@@ -568,10 +539,7 @@ namespace App.Server.Controllers
             ));
         }
 
-        //Trigger: DELETE by  api/Notes/guid.
-        //Guards: Only owner can delete.
-        //Actions: Removes note.
-        //Result: 204 NoContent.
+
         [HttpDelete("{guid}")]
         public async Task<IActionResult> DeleteNote(string guid)
         {
@@ -611,10 +579,9 @@ namespace App.Server.Controllers
             return NoContent();
         }
 
-        //Trigger: GET api/Notes/my-collaborations-with-notes.
-        //Guards: Requires user id.
-        //Actions: Reads memberships + counts notes per collaboration.
-        //Result: Collaboration summaries for sidebar/list views.
+        // -------------------------
+        // COLLABORATION SUMMARY FOR NOTES PAGE
+        // -------------------------
         [HttpGet("my-collaborations-with-notes")]
         public async Task<ActionResult<IEnumerable<object>>> GetMyCollaborationsWithNotes()
         {
@@ -639,10 +606,9 @@ namespace App.Server.Controllers
             return Ok(collaborationsWithNotes);
         }
 
-        //Trigger: Internal helper for many endpoints.
-        //Guards: Returns null when unauthenticated or claim missing.
-        //Actions: Tries multiple claim names.
-        //Result: Nullable int user id.
+        // -------------------------
+        // AUTH, OWNERSHIP, AND ROLE HELPERS
+        // -------------------------
         private int? GetCurrentUserId()
         {
             if (User.Identity?.IsAuthenticated != true)
@@ -703,6 +669,9 @@ namespace App.Server.Controllers
             return role == "owner" || role == "editor";
         }
 
+        // -------------------------
+        // FORMATTING AND DTO MAPPING
+        // -------------------------
         private static string SanitizeFileName(string value)
         {
             var invalidChars = Path.GetInvalidFileNameChars();
@@ -752,6 +721,9 @@ namespace App.Server.Controllers
         }
     }
 
+    // -------------------------
+    // REQUEST / RESPONSE MODELS
+    // -------------------------
     public class NotePermissionSaveModel
     {
         public string? Email { get; set; }

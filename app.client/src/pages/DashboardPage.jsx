@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+//reusable card components
 import CoursesCourseCard from '../components/CoursesCourseCard';
 import NotesNoteCard from '../components/NotesNoteCard';
 import AssignmentCard from '../components/AssignmentCard';
+//icons
 import { Clock } from "react-feather";
 import { BookOpen, FileText } from 'lucide-react';
 
 /**
- * Purpose: Landing dashboard with real recent courses, notes, and assignment urgency.
- * API touched: GET /api/Dashboard.
+ * Purpose: loads a summary from the backend and displays recent courses, recent notes, and upcoming assignments
  */
 
 const formatDate = (value) => {

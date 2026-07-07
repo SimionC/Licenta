@@ -1,8 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-/// Purpose: course aggregate root.
-/// Key relations: TeacherId -> User; JoinPassword is enrollment token for students.
 
 namespace App.Server.ORM
 {

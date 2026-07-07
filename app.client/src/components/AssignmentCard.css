@@ -1,3 +1,4 @@
+/* Assignment card hover animation. */
 .assignment-card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -7,6 +8,7 @@
         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
     }
 
+/* Dashboard-side assignment list container. */
 .assignments-box {
     position: absolute;
     top: 3rem;
@@ -27,6 +29,7 @@
     margin-bottom: 1.2rem;
 }
 
+/* Assignment panel/card layout. */
 .assignment-panel {
     width: 460px;
     margin-left: 3rem;
@@ -44,6 +47,7 @@
     align-items: center;
 }
 
+/* Status dot and due-date badge colors. */
 .assignment-dot {
     font-size: 0.9rem;
     font-weight: bold;

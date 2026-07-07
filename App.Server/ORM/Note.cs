@@ -5,8 +5,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Server.ORM;
 
-/// Purpose: note storage entity for personal/public/collaboration notes.
-/// Key fields: Guid is public link key; Text is persisted content; VisibilityTypeId controls privacy.
+/// Purpose: note storage entity for personal/public/collaboration notes 
+
 public partial class Note
 {
     [Key]

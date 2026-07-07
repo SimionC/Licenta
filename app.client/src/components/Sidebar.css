@@ -1,3 +1,4 @@
+/* Fixed global navigation column. */
 .sidebar {
     width: 300px;
     height: 100vh;
@@ -12,6 +13,7 @@
     font-size: 1.1rem; /* makes all sidebar text slightly larger */
 }
 
+/* App logo/brand block. */
 .logo {
     display: flex;
     align-items: center;
@@ -32,6 +34,7 @@
     justify-content: center;
 }
 
+/* Main route links. */
 .menu {
     display: flex;
     flex-direction: column;
@@ -63,8 +66,9 @@
         background-color: #5DB996;
         color: white;
         font-weight: 600;
-    }
+}
 
+/* Current user/profile and logout area at the bottom. */
 .sidebar-user-actions {
     border-top: 1px solid #eee;
     display: flex;

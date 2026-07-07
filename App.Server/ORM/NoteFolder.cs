@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Server.ORM;
 
-/// Purpose: user-owned personal note folder. ParentFolderId is reserved for future nesting.
+/// Purpose: user-owned personal note folder
 public class NoteFolder
 {
     [Key]

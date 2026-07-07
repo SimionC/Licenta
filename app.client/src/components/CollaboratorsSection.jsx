@@ -3,8 +3,6 @@ import { Plus, X, UserPlus } from 'lucide-react';
 
 /**
  * Purpose: Reusable collaborator management UI for workspace member viewing/management.
- * API touched (edit mode): GET /api/Collaborations/{id}, POST /invite, PATCH/DELETE /members/{memberId}.
- * Control contract: parentIsEditing is the single source of truth for mutating actions.
  */
 
 export default function CollaboratorsSection({
@@ -13,6 +11,9 @@ export default function CollaboratorsSection({
     collaborationId,
     parentIsEditing
 }) {
+    // -------------------------
+    // LOCAL ADD-MEMBER STATE
+    // -------------------------
     const [newEmail, setNewEmail] = useState('');
     const [newRole, setNewRole] = useState('viewer');
     const [showAddForm, setShowAddForm] = useState(false);
@@ -24,6 +25,9 @@ export default function CollaboratorsSection({
         }
     }, [parentIsEditing]);
 
+    // -------------------------
+    // SERVER SYNC AND MEMBER ACTIONS
+    // -------------------------
     // helper to re-load from server when in edit mode
     // refreshMembers: canonical re-sync from server after role/member mutations.
     const refreshMembers = async () => {
@@ -153,6 +157,7 @@ export default function CollaboratorsSection({
 
     return (
         <div className="collaborators-section">
+            {/* Header with optional Add Member action. */}
             <div className="collaborators-header">
                 <h4>Collaborators</h4>
 
@@ -170,6 +175,7 @@ export default function CollaboratorsSection({
                 )}
             </div>
 
+            {/* Add-member form shown only while the parent allows editing. */}
             {showAddForm && parentIsEditing && ( // Only show form if parent allows editing AND internal flag is true
                 <div className="add-collaborator-form">
                     <div className="form-group">
@@ -220,6 +226,7 @@ export default function CollaboratorsSection({
                 </div>
             )}
 
+            {/* Current collaborator list with role controls. */}
             <div className="collaborators-list">
                 {collaborators.length === 0 ? (
                     <p className="no-collaborators">
@@ -264,6 +271,7 @@ export default function CollaboratorsSection({
                 )}
             </div>
 
+            {/* Static explanation of the available workspace roles. */}
             <div className="permissions-info">
                 <h5>Permission Levels:</h5>
                 <ul>

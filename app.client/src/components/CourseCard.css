@@ -1,3 +1,4 @@
+/* Minimal course preview card. */
 .course-card {
     background-color: #E3F0AF;
     border-radius: 16px;
@@ -14,8 +15,9 @@
 
     .course-card:hover {
         transform: translateY(-4px);
-    }
+}
 
+/* Icon and title inside the course card. */
 .course-icon {
     font-size: 2rem;
     margin-bottom: 0.5rem;

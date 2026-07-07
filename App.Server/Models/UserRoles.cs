@@ -1,5 +1,8 @@
 namespace App.Server.Models;
 
+//Purpose: obviously the Roles :) 
+//Used in: AuthController.cs, AuthService,cs, CourseController.cs, DashboardController.cs
+
 public static class UserRoles
 {
     public const int Student = 1;

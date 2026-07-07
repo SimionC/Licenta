@@ -1,5 +1,8 @@
 namespace App.Server.Models;
 
+//Purpose: used more for account/profile display
+//FIND: AuthService.cs
+
 public class AccountModel
 {
     public int Id { get; set; }

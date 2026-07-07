@@ -4,9 +4,7 @@ using App.Server.ORM;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
-//Purpose: Collaboration CRUD, membership roles, invites, and member management.
-//Inputs/Outputs: Uses current user identity and body models; returns collaboration summary/detail shapes.
-//Depends on: App.Server/ORM/AppDbContext.cs, inline model classes at file bottom.
+//Purpose: Collaboration CRUD, membership roles, invites and member management
 
 namespace App.Server.Controllers
 {
@@ -23,10 +21,9 @@ namespace App.Server.Controllers
         }
 
 
-        //Trigger: GET api/Collaborations/my-collaborations.
-        //Guards: Requires current user id.
-        //Actions: Joins membership + collaboration + creator + member count.
-        //Result: List of collaborations user belongs to.
+        // -------------------------
+        // COLLABORATION LISTING AND DETAILS
+        // -------------------------
         [HttpGet("my-collaborations")]
         public async Task<ActionResult<IEnumerable<CollaborationModel>>> GetMyCollaborations()
         {
@@ -56,10 +53,7 @@ namespace App.Server.Controllers
         }
 
         
-        //Trigger: GET collaboration by api/Collaborations/{id}.
-        //Guards: User must be member.
-        //Actions: Loads collaboration and member details with roles.
-        //Result: Collaboration detail payload.
+  
         [HttpGet("{id}")]
         public async Task<ActionResult<CollaborationDetailModel>> GetCollaboration(int id)
         {
@@ -112,9 +106,10 @@ namespace App.Server.Controllers
             return Ok(collaborationDetail);
         }
 
-        //Trigger: GET api/Collaborations/{id}/notes.
-        //Guards: Current user must be a collaboration member.
-        //Actions: Returns notes contained in the collaboration with role-aware access flags.
+        
+        // -------------------------
+        // NOTES INSIDE A COLLABORATION
+        // -------------------------
         [HttpGet("{id}/notes")]
         public async Task<ActionResult<IEnumerable<NoteModel>>> GetCollaborationNotes(int id)
         {
@@ -142,9 +137,7 @@ namespace App.Server.Controllers
             return Ok(notes.Select(note => MapCollaborationNote(note, memberRole)));
         }
 
-        //Trigger: POST api/Collaborations/{id}/notes.
-        //Guards: Current user must be owner/editor in the collaboration.
-        //Actions: Creates an internal collaboration note that is not assigned to personal folders.
+        
         [HttpPost("{id}/notes")]
         public async Task<ActionResult<NoteModel>> CreateCollaborationNote(int id, NoteModel model)
         {
@@ -195,10 +188,10 @@ namespace App.Server.Controllers
         }
 
         
-        //Trigger: POST api/Collaborations/create.
-        //Guards: Requires auth user id.
-        //Actions: Creates collaboration, adds creator as owner, optionally adds invited users.
-        //Result: 201 Created with summary model.
+        
+        // -------------------------
+        // CREATE COLLABORATION WORKSPACE
+        // -------------------------
         [HttpPost("create")]
         public async Task<ActionResult<CollaborationModel>> CreateCollaboration(CreateCollaborationModel model)
         {
@@ -322,10 +315,10 @@ namespace App.Server.Controllers
         }
 
         
-        //Trigger: PUT api/Collaborations/{id}/members/{memberId}.
-        //Guards: Only collaboration owner can change roles; owner role itself cannot be changed.
-        //Actions: Updates target member role.
-        //Result: 200 OK.
+        
+        // -------------------------
+        // MEMBER ROLE MANAGEMENT
+        // -------------------------
         [HttpPut("{id}/members/{memberId}")]
         public async Task<IActionResult> UpdateMemberRole(int id, int memberId, UpdateMemberRoleModel model)
         {
@@ -369,10 +362,7 @@ namespace App.Server.Controllers
         }
 
      
-        //Trigger: DELETE api/Collaborations/{id}/members/{memberId}.
-        //Guards: Only owner can remove; owner cannot remove self-owner entry.
-        //Actions: Deletes membership row.
-        //Result: 200 OK.
+        
         [HttpDelete("{id}/members/{memberId}")]
         public async Task<IActionResult> RemoveMember(int id, int memberId)
         {
@@ -410,10 +400,10 @@ namespace App.Server.Controllers
         }
 
         
-        //Trigger: DELETE collaboration by api/Collaborations/{id}.
-        //Guards: Collaboration must exist; requester must be collaboration owner (UserId).
-        //Actions: Removes collaboration members, then collaboration.
-        //Result: 204 NoContent.
+        
+        // -------------------------
+        // WORKSPACE DELETE / LEAVE
+        // -------------------------
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCollaboration(int id)
         {
@@ -453,10 +443,7 @@ namespace App.Server.Controllers
             return NoContent();
         }
 
-        //Trigger: DELETE api/Collaborations/{id}/leave.
-        //Guards: Requester must be a non-owner collaboration member.
-        //Actions: Removes only the requester's membership.
-        //Result: 204 NoContent.
+        
         [HttpDelete("{id}/leave")]
         public async Task<IActionResult> LeaveCollaboration(int id)
         {
@@ -492,10 +479,10 @@ namespace App.Server.Controllers
         }
 
         
-        //Trigger: POST api/Collaborations/{id}/invite.
-        //Guards: Requester must be owner/editor; invited user must exist and not already be a member.
-        //Actions: Adds member with provided/default role.
-        //Result: 200 OK.
+       
+        // -------------------------
+        // INVITE MEMBERS
+        // -------------------------
         [HttpPost("{id}/invite")]
         public async Task<IActionResult> InviteUser(int id, InviteUserModel model)
         {
@@ -556,11 +543,10 @@ namespace App.Server.Controllers
             return Ok();
         }
 
-        // Helper method to get current user ID
-        //Trigger: Internal identity parsing.
-        //Guards: Null when unauthenticated/missing claims.
-        //Actions: Tries several claim keys.
-        //Result: Nullable int user id.
+        
+        // -------------------------
+        // AUTH, ROLE, AND MAPPING HELPERS
+        // -------------------------
         private int? GetCurrentUserId()
         {
             if (User.Identity?.IsAuthenticated != true)
@@ -618,7 +604,9 @@ namespace App.Server.Controllers
         }
     }
 
-    // Models
+    // -------------------------
+    // REQUEST / RESPONSE MODELS
+    // -------------------------
     public class CollaborationModel
     {
         public int Id { get; set; }

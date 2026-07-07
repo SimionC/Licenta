@@ -7,7 +7,7 @@ using System.Text.Json;
 
 //Purpose: App bootstrap (DI, EF Core SQLite, cookie auth, CORS, middleware pipeline, controller mapping).
 //Inputs/Outputs: Reads appsettings connection string and environment; exposes API endpoints and static SPA fallback.
-//Depends on: App.Server/ORM/AppDbContext.cs, App.Server/Services/AuthService.cs, App.Server/Services/TestService.cs.
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,10 +23,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // Making TestService available for dependency injection 
+//Dependency Injection reduces the hard-coded dependencies among your classes by injecting those dependencies at run time instead of design time technically.
 builder.Services.AddScoped<TestService>();
 builder.Services.AddScoped<AuthService>();
 
-// Fix: Use "DefaultConnection" to match appsettings.json
+// Connects the backend to the SQLite database
 builder.Services.AddDbContext<AppDbContext>((config) => {
     var connectionBuilder = new SqliteConnectionStringBuilder(
         builder.Configuration.GetConnectionString("DefaultConnection"))
@@ -40,7 +41,7 @@ builder.Services.AddDbContext<AppDbContext>((config) => {
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie();
 
-// Fix: Single CORS policy that allows both possible frontend URLs
+// CORS controls which frontend URLs are allowed to call the backend
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -79,10 +80,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 
-// Fix: Use CORS before authentication
+// Use CORS before authentication
 app.UseCors();
 
-// Fix: Authentication must come before Authorization
+// Authentication must come before Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 

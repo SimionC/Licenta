@@ -6,29 +6,31 @@ import CollaboratorsSection from '../components/CollaboratorsSection'
 import './NoteEditorPage.css';
 import './CollaborationStyles.css';
 
-//for markdown editor
+// Markdown editor rendering: text, tables, math formulas, and code highlighting.
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-//+ highlighting
 import rehypeHighlight from 'rehype-highlight'
 import 'katex/dist/katex.min.css'
 import 'highlight.js/styles/github.css'
 
 /**
- * Purpose: Unified create/edit/read page for both personal and collaboration notes.
- * API touched: GET/POST/PUT/DELETE /api/Notes..., GET/DELETE /api/Collaborations...
- * State contract: noteGuid controls new-vs-existing mode; collaborationId controls collaborator panel.
+ * Purpose: Unified create/edit/read page for both personal and collaboration notes
  */
 
 const NoteEditorPage = () => {
+    // -------------------------ROUTE AND PAGE STATE-------------------------
     const { noteGuid, collabId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const routeCollaborationId = collabId ? Number(collabId) : null;
+
+    // Loaded note/collaboration data.
     const [note, setNote] = useState(null);
     const [collaboration, setCollaboration] = useState(null);
+
+    // Editable note fields and editor mode.
     const [title, setTitle] = useState('Untitled Note');
     const [content, setContent] = useState('# Welcome to your new note\n\nStart writing here...');
     const [isEditing, setIsEditing] = useState(false); // Controls editing for title, content, and collaboration
@@ -36,6 +38,8 @@ const NoteEditorPage = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [isNewNote, setIsNewNote] = useState(false);
     const [fetchError, setFetchError] = useState('')
+
+    // Folder, member, and feedback state used around the editor.
     const [members, setMembers] = useState([]);
     const [folders, setFolders] = useState([]);
     const [folderId, setFolderId] = useState('');
@@ -43,6 +47,8 @@ const NoteEditorPage = () => {
     const [statusTone, setStatusTone] = useState('success');
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Direct sharing modal state for personal notes.
     const [shareModalOpen, setShareModalOpen] = useState(false);
     const [permissions, setPermissions] = useState([]);
     const [shareEmail, setShareEmail] = useState('');
@@ -50,6 +56,7 @@ const NoteEditorPage = () => {
     const [isSharing, setIsSharing] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
 
+    // -------------------------INITIAL DATA LOADING-------------------------
     useEffect(() => {
         fetch('/api/NoteFolders/my-folders', { credentials: 'include' })
             .then(res => res.ok ? res.json() : [])
@@ -57,10 +64,8 @@ const NoteEditorPage = () => {
             .catch(() => setFolders([]));
     }, []);
 
-    // useEffect to fetch note data when noteGuid changes
+    // Loads either an existing note or prepares the editor for a new note.
     useEffect(() => {
-
-        // fetchNote effect: initializes editor for new note or loads existing note + members.
         const fetchNote = async () => {
             setFetchError('');
             if (!noteGuid) {
@@ -89,7 +94,7 @@ const NoteEditorPage = () => {
                     setMembers([]);
                 }
 
-                // This means it's a brand new note creation (e.g., /notes/new or /collaborations/:id/notes/new)
+                // This means it's a brand new note creation
                 setIsNewNote(true);
                 setIsEditing(true); // Start in editing mode for new notes
                 setIsPreviewing(false);
@@ -132,7 +137,7 @@ const NoteEditorPage = () => {
                 setTitle(data.title);
                 setContent(data.content);
                 setFolderId(data.folderId ? String(data.folderId) : '');
-                setIsNewNote(false); // It's an existing note
+                setIsNewNote(false);
                 setIsPreviewing(false);
                 setStatusMessage('');
 
@@ -144,7 +149,7 @@ const NoteEditorPage = () => {
 
                 // If it's a collaboration note, set members
                 if (data.collaborationId) {
-                    // Fetch members for collaboration notes
+                    
                     const membersRes = await fetch(`/api/Collaborations/${data.collaborationId}`, {
                         credentials: 'include'
                     });
@@ -157,7 +162,7 @@ const NoteEditorPage = () => {
                     }
                 } else {
                     setCollaboration(null);
-                    setMembers([]); // Not a collaboration note, clear members
+                    setMembers([]);
                 }
 
             } catch (error) {
@@ -170,7 +175,7 @@ const NoteEditorPage = () => {
         fetchNote();
     }, [noteGuid, location.search, routeCollaborationId]);
 
-    // handleSave: builds payload, selects POST vs PUT, then syncs local state and route.
+    // -------------------------STATUS AND API HELPERS-------------------------
     const showStatus = (message, tone = 'success') => {
         setStatusMessage(message);
         setStatusTone(tone);
@@ -185,6 +190,7 @@ const NoteEditorPage = () => {
         }
     };
 
+    // -------------------------DIRECT NOTE SHARING PERMISSIONS-------------------------
     const loadPermissions = async (guid) => {
         const res = await fetch(`/api/Notes/${guid}/permissions`, { credentials: 'include' });
         if (!res.ok) {
@@ -267,6 +273,9 @@ const NoteEditorPage = () => {
         }
     };
 
+    // -------------------------NOTE ACTIONS-------------------------
+
+    // handleSave: builds payload, selects POST vs PUT, then syncs local state and route.
     const handleSave = async () => {
         if (!canEditNote) {
             showStatus('You have view-only access to this note.', 'error');
@@ -308,12 +317,11 @@ const NoteEditorPage = () => {
             const savedNote = await res.json();
             setNote(savedNote);
             setFolderId(savedNote.folderId ? String(savedNote.folderId) : '');
-            setIsNewNote(false); // No longer a new note once saved
-            setIsEditing(false); // Exit editing mode after saving
+            setIsNewNote(false);
+            setIsEditing(false); 
             setIsPreviewing(false);
 
             if (isNewNote) {
-                // If it was a new note, navigate to its URL
                 if (savedNote.collaborationId) {
                     navigate(`/collaborations/${savedNote.collaborationId}/notes/${savedNote.guid}`);
                 } else {
@@ -405,12 +413,13 @@ const NoteEditorPage = () => {
             setTitle(note.title);
             setContent(note.content);
             setFolderId(note.folderId ? String(note.folderId) : '');
-            setIsEditing(false); // Exit editing mode
+            setIsEditing(false);
             setIsPreviewing(false);
             // If collaborators were modified, you might want to re-fetch them here or store original state
         }
     };
 
+    // -------------------------ERROR SCREEN-------------------------
     if (fetchError) {
         return (
             <div className="note-editor-page">
@@ -436,6 +445,7 @@ const NoteEditorPage = () => {
         )
     }
 
+    // -------------------------UI PERMISSION FLAGS-------------------------
     const accessRole = note?.accessRole || (isNewNote ? 'owner' : 'viewer');
     const canEditNote = isNewNote || note?.canEdit === true;
     const canManageSharing = !isNewNote && note?.canManageSharing === true && !note?.collaborationId;
@@ -450,12 +460,13 @@ const NoteEditorPage = () => {
         ? folders.find(folder => String(folder.id) === String(folderId))?.name || 'Folder'
         : 'No Folder';
 
-    //NoteEditorPage
+
     return (
         <div className="note-editor-page">
+            {/* Page shell: sidebar navigation plus the note editor workspace. */}
             <Sidebar />
             <div className="note-editor-main">
-                {/* Header */}
+                {/* Header: back navigation, editable title, context, and action buttons. */}
                 <div className="note-editor-header">
                     <div className="note-editor-header-left">
                         <button
@@ -490,6 +501,7 @@ const NoteEditorPage = () => {
                     <div className="note-editor-actions">
                         {isEditing ? (
                             <>
+                                {/* Editing actions: folder selection, preview switch, save, and cancel. */}
                                 {canManageFolder && (
                                     <div className="note-header-folder">
                                         <Folder size={15} />
@@ -531,6 +543,7 @@ const NoteEditorPage = () => {
                             </>
                         ) : (
                             <>
+                                {/* Read mode actions: folder label, sharing, download, and delete. */}
                                 {canManageFolder && (
                                     <div className="note-folder-readonly">
                                         <Folder size={15} />
@@ -576,16 +589,16 @@ const NoteEditorPage = () => {
                     </div>
                 </div>
 
+                {/* Short success/error feedback after save, share, delete, or download actions. */}
                 {statusMessage && (
                     <div className={`note-status-message ${statusTone === 'error' ? 'error' : ''}`}>
                         {statusMessage}
                     </div>
                 )}
 
-                {/* ─── Main Container ─── */}
+                {/* Main editor area: switches between textarea editing and rendered Markdown preview. */}
                 <div className="note-main-flex">
 
-                    {/* Content */}
                     <div className="note-content-section">
                         <div className="note-content-header">
                             <h3>Content</h3>
@@ -639,6 +652,7 @@ const NoteEditorPage = () => {
 
             </div>
 
+            {/* Delete confirmation modal for personal notes and collaboration notes. */}
             {deleteModalOpen && (
                 <div className="note-modal-overlay">
                     <div className="note-confirm-modal">
@@ -673,6 +687,7 @@ const NoteEditorPage = () => {
                 </div>
             )}
 
+            {/* Sharing modal: direct note permissions or collaboration member overview. */}
             {shareModalOpen && (
                 <div className="note-modal-overlay">
                     <div className="note-share-modal">

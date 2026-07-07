@@ -2,7 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
-import { useAuth } from './hooks/useAuth';
+import { useAuth } from './hooks/useAuth'; //custom authentication hook
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import AllCoursesPage from './pages/AllCoursesPage';
@@ -17,13 +17,17 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PasswordChangeRoute from './components/PasswordChangeRoute';
 
 //IMPORT MARKDOWN EDITOR
-import 'katex/dist/katex.min.css';       //npm install react-markdown remark-gfm remark-math rehype-katex katex
-import 'highlight.js/styles/github.css'; //npm install rehype-highlight highlight.js
+import 'katex/dist/katex.min.css';       //MATH FORMULAS npm install react-markdown remark-gfm remark-math rehype-katex katex
+import 'highlight.js/styles/github.css'; //CODE BLOKS npm install rehype-highlight highlight.js
 
 /**
- * Purpose: Central route table and top-level auth bootstrap for userType/email.
- * API touched: GET /api/Auth/Me.
- * State contract: userType drives role-based pages and localStorage mirrors identity.
+ * Purpose: is the frontend’s central organizer. It decides:
+what pages exist
+what URL opens each page
+which pages require login
+which page handles forced password change
+what global styles are loaded
+ * API touched: GET /api/Auth/Me
  */
 
 function App() {

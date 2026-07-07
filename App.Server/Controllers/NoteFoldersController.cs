@@ -6,6 +6,9 @@ using System.Security.Claims;
 
 namespace App.Server.Controllers;
 
+// Purpose: manages the current user's note folders.
+// Main use: Notes page and note editor folder dropdown.
+
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
@@ -18,6 +21,9 @@ public class NoteFoldersController : ControllerBase
         _context = context;
     }
 
+    // -------------------------
+    // FOLDERS
+    // -------------------------
     [HttpGet("my-folders")]
     public async Task<IActionResult> GetMyFolders()
     {
@@ -130,6 +136,9 @@ public class NoteFoldersController : ControllerBase
         return NoContent();
     }
 
+    // -------------------------
+    // AUTH AND OWNERSHIP HELPERS
+    // -------------------------
     private async Task<bool> UserOwnsFolder(int userId, int folderId)
     {
         return await _context.NoteFolders.AnyAsync(f => f.Id == folderId && f.UserId == userId);
@@ -164,6 +173,9 @@ public class NoteFoldersController : ControllerBase
     }
 }
 
+// -------------------------
+// REQUEST / RESPONSE MODELS
+// -------------------------
 public class NoteFolderSaveModel
 {
     public string? Name { get; set; }

@@ -4,6 +4,7 @@
     font-family: 'Inter', sans-serif;
 }
 
+/* Root container: keeps the React app centered and gives it outer spacing. */
 #root {
     max-width: 1280px;
     margin: 0 auto;
@@ -11,11 +12,13 @@
     /*text-align: center;*/
 }
 
+/* Shared table spacing used wherever basic tables appear. */
 th, td {
     padding-left: 1rem;
     padding-right: 1rem;
 }
 
+/* Shared app layout for pages that use the sidebar + main content structure. */
 .app-layout-page {
     display: flex;
     background-color: #FBF6E9;
@@ -27,6 +30,7 @@ th, td {
     padding: 3rem 4rem;
 }
 
+/* Shared green action button used across several pages. */
 .btn-green {
     background-color: #118B50 !important;
     color: white;
@@ -40,7 +44,9 @@ th, td {
     background-color: #0f7745;
 }
 
-/*DASHBOARD*/
+/* ========================================
+   DASHBOARD PAGE
+   ======================================== */
 .dashboard-title {
     font-size: 3.2rem; /* bigger font */
     font-weight: 800; /* bolder */
@@ -114,6 +120,7 @@ th, td {
     margin-bottom: 0.8rem;
 }
 
+/* Makes note cards behave like clickable cards without default button styling. */
 .dashboard-note-card-link {
     border: 0;
     background: transparent;
@@ -149,6 +156,7 @@ th, td {
     margin-bottom: 1rem;
 }
 
+/* Dashboard responsive grid adjustments. */
 @media (max-width: 1100px) {
     .dashboard-card-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -161,7 +169,9 @@ th, td {
     }
 }
 
-/*ALLCOPURSES PAGE*/
+/* ========================================
+   ALL COURSES PAGE
+   ======================================== */
 
 .courses-page {
     display: flex;
@@ -213,10 +223,10 @@ th, td {
 
 .courses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* ⬅ wider */
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* wider */
     gap: 2rem;
-    max-width: 1400px; /* 💡 new max width */
-    margin: 0 auto; /* 💡 center horizontally */
+    max-width: 1400px; /* new max width */
+    margin: 0 auto; /* center horizontally */
 }
 
 .courses-content-wrapper {
@@ -224,7 +234,9 @@ th, td {
     margin: 0 auto;
 }
 
-/*to create a new course*/
+/* ========================================
+   SHARED MODAL / CREATE COURSE MODAL
+   ======================================== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -246,7 +258,9 @@ th, td {
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
 }
 
-/* ACCOUNTS PAGE */
+/* ========================================
+   ACCOUNTS PAGE
+   ======================================== */
 .accounts-page {
     display: flex;
     min-height: 100vh;
@@ -426,6 +440,7 @@ th, td {
     opacity: 0.65;
 }
 
+/* Accounts page becomes one column on smaller screens. */
 @media (max-width: 1000px) {
     .accounts-layout {
         grid-template-columns: 1fr;
@@ -437,7 +452,9 @@ th, td {
     }
 }
 
-/* ACCOUNT PAGE */
+/* ========================================
+   ACCOUNT PAGE
+   ======================================== */
 .account-page {
     display: flex;
     min-height: 100vh;
@@ -571,7 +588,9 @@ th, td {
     color: #118B50;
 }
 
-/* DARK MODE */
+/* ========================================
+   DARK MODE: PAGE BACKGROUNDS
+   ======================================== */
 html[data-theme="dark"] body {
     background-color: #111827;
     color: #e5e7eb;
@@ -594,6 +613,7 @@ html[data-theme="dark"] .accounts-page {
     color: #e5e7eb;
 }
 
+/* Dark cards and main content surfaces. */
 html[data-theme="dark"] .sidebar,
 html[data-theme="dark"] .card,
 html[data-theme="dark"] .accounts-card,
@@ -629,6 +649,7 @@ html[data-theme="dark"] .note-folder-readonly {
     color: #e5e7eb;
 }
 
+/* Dark mode headings and important labels. */
 html[data-theme="dark"] .menu-item,
 html[data-theme="dark"] .accounts-card-title,
 html[data-theme="dark"] .account-card-title,
@@ -657,6 +678,7 @@ html[data-theme="dark"] .note-title {
     background: none;
 }
 
+/* Dark mode sidebar navigation states. */
 html[data-theme="dark"] .menu-item:hover {
     background-color: #374151;
 }
@@ -665,6 +687,7 @@ html[data-theme="dark"] .menu-item.active {
     background-color: #118B50;
 }
 
+/* Dark mode form fields. */
 html[data-theme="dark"] input,
 html[data-theme="dark"] select,
 html[data-theme="dark"] textarea,
@@ -680,6 +703,7 @@ html[data-theme="dark"] .form-control:disabled {
     color: #cbd5e1;
 }
 
+/* Dark mode muted helper text. */
 html[data-theme="dark"] .account-header p,
 html[data-theme="dark"] .accounts-header p,
 html[data-theme="dark"] .account-preference-row p,
@@ -699,6 +723,7 @@ html[data-theme="dark"] .note-content-placeholder {
     color: #cbd5e1;
 }
 
+/* Dark mode secondary/neutral buttons. */
 html[data-theme="dark"] .account-secondary-btn,
 html[data-theme="dark"] .accounts-reset-btn,
 html[data-theme="dark"] .accounts-temp-password code,
@@ -723,6 +748,7 @@ html[data-theme="dark"] .btn-cancel:hover {
     color: #ffffff;
 }
 
+/* Dark mode tab and primary action states. */
 html[data-theme="dark"] .tab.active {
     background: #5DB996;
     border-color: #86efac;
@@ -746,6 +772,7 @@ html[data-theme="dark"] .courses-join-btn:hover {
     color: #052e16;
 }
 
+/* Dark mode modal text and close buttons. */
 html[data-theme="dark"] .modal-header h3,
 html[data-theme="dark"] .notes-modal-header h3,
 html[data-theme="dark"] .form-group label,
@@ -758,6 +785,7 @@ html[data-theme="dark"] .notes-modal-header button {
     color: #f9fafb;
 }
 
+/* Dark mode collaboration/member forms inside notes modals. */
 html[data-theme="dark"] .notes-collab-member-form,
 html[data-theme="dark"] .add-collaborator-form,
 html[data-theme="dark"] .permissions-info,
@@ -788,6 +816,7 @@ html[data-theme="dark"] .notes-collab-member-form button {
     font-weight: 800;
 }
 
+/* Dark mode notes view controls and status labels. */
 html[data-theme="dark"] .notes-view-btn,
 html[data-theme="dark"] .notes-folder-select {
     color: #e5e7eb;
@@ -807,6 +836,7 @@ html[data-theme="dark"] .note-collaboration-context strong {
     color: #86efac;
 }
 
+/* Dark mode warning/info messages. */
 html[data-theme="dark"] .dashboard-data-message,
 html[data-theme="dark"] .notes-message {
     background: #431407;
@@ -814,6 +844,7 @@ html[data-theme="dark"] .notes-message {
     color: #fed7aa;
 }
 
+/* Dark mode course and assignment-specific styling. */
 html[data-theme="dark"] .courses-card-header {
     background: #118B50;
 }
@@ -852,6 +883,7 @@ html[data-theme="dark"] .cab-action:hover {
     color: #052e16;
 }
 
+/* Account page responsive form layout. */
 @media (max-width: 800px) {
     .account-form-grid {
         grid-template-columns: 1fr;

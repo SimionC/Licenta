@@ -1,3 +1,6 @@
+/* ========================================
+   PAGE LAYOUT AND HEADER
+   ======================================== */
 .course-page-container {
     display: flex;
     background-color: #fbf6e9;
@@ -129,6 +132,9 @@
     background: #fff1f2;
 }
 
+/* ========================================
+   TABS AND TOP ACTIONS
+   ======================================== */
 .course-tabs {
     display: flex;
     justify-content: start;
@@ -188,6 +194,9 @@
     cursor: not-allowed;
 }
 
+/* ========================================
+   MODALS AND FORM CONTROLS
+   ======================================== */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -321,6 +330,9 @@
     padding: 0.7rem 0.85rem;
 }
 
+/* ========================================
+   COURSE EDITING, RESOURCES, AND MESSAGES
+   ======================================== */
 .course-edit-box,
 .resource-upload-box,
 .course-empty-state,
@@ -373,6 +385,9 @@
     flex-wrap: wrap;
 }
 
+/* ========================================
+   ASSIGNMENTS, SUBMISSIONS, AND GRADES
+   ======================================== */
 .assignment-list,
 .grades-panel {
     display: grid;
@@ -465,6 +480,9 @@
     padding: 12px;
 }
 
+/* ========================================
+   NOTE SNAPSHOT PREVIEW / READER
+   ======================================== */
 .note-snapshot-preview {
     width: 100%;
     border: 1px solid #dbe7d8;
@@ -570,6 +588,7 @@
     font-style: italic;
 }
 
+/* Assignment deadline state shown when submissions are closed. */
 .deadline-reached-state {
     display: flex;
     align-items: center;
@@ -657,6 +676,9 @@
     color: #166534;
 }
 
+/* ========================================
+   RESPONSIVE LAYOUT
+   ======================================== */
 @media (max-width: 900px) {
     .course-page {
         padding: 1.25rem;

@@ -3,9 +3,14 @@ import React from 'react';
 import './ResourceCard.css';
 import { Download, FileText, Trash2 } from 'lucide-react';
 
+/**
+ * Purpose: downloadable course resource card.
+ * Contract: canManage controls whether the delete action is visible.
+ */
 const ResourceCard = ({ title, type, size, uploadedAt, canManage, onDownload, onDelete }) => {
     return (
         <div className="resource-card">
+            {/* Resource identity and metadata. */}
             <div className="resource-left">
                 <div className="resource-icon">
                     <FileText size={28} />
@@ -17,6 +22,7 @@ const ResourceCard = ({ title, type, size, uploadedAt, canManage, onDownload, on
                     </p>
                 </div>
             </div>
+            {/* Download is always available; delete is only for managers/teachers. */}
             <div className="resource-actions">
                 <button className="resource-download-btn" onClick={onDownload}>
                     <Download size={16} />

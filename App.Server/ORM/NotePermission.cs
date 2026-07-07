@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-/// Purpose: direct per-user sharing permissions for personal notes.
+/// Purpose: direct per-user sharing permissions for personal notes
 
 namespace App.Server.ORM
 {

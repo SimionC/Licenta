@@ -8,16 +8,17 @@ using System.Security.Claims;
 
 namespace App.Server.Controllers;
 
-//Purpose: Authentication endpoints for admin-created accounts, login, current user, and password changes.
-//Inputs/Outputs: Receives account/login/password DTOs; sets or clears cookie sessions.
-//Depends on: App.Server/Services/AuthService.cs and cookie auth configured in App.Server/Program.cs.
+//Purpose: exposes API endpoints for login, logout, current user info, password changes, profile updates, and admin account management
+//Inputs/Outputs: Receives account/login/password DTOs/models; sets or clears cookie sessions
+//Depends on: App.Server/Services/AuthService.cs and cookie auth configured in App.Server/Program.cs
 
-[ApiController]
+[ApiController] 
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    //The controller receives AuthService automatically from dependency injection
+    //Dependency Injection reduces the hard-coded dependencies among your classes by injecting those dependencies at run time instead of design time technically.
     private readonly AuthService _authService;
-
     public AuthController(AuthService authService)
     {
         _authService = authService;

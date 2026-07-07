@@ -3,15 +3,17 @@ import axios from 'axios';
 
 /**
  * Purpose: assignment creation form scoped to a course.
- * API touched: POST /api/Course/{courseId}/coursework.
- * Output contract: onCreated callback updates parent list without re-fetch.
  */
 
 export default function CreateCourseWorkForm({ courseId, onCreated }) {
+    // -------------------------
+    // ASSIGNMENT FORM STATE
+    // -------------------------
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [deadline, setDeadline] = useState('');
 
+    // Creates coursework for the current course and returns it to the parent.
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
@@ -33,6 +35,7 @@ export default function CreateCourseWorkForm({ courseId, onCreated }) {
     return (
         <form onSubmit={handleSubmit} className="mb-4">
 
+            {/* Assignment details sent to /coursework. */}
             <h4>Create Assignment</h4>
             <div className="mb-2">
                 <input

@@ -1,20 +1,23 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { BookOpen, FileText, LayoutDashboard, LogOut, UserRound, Users } from 'lucide-react';
+import { BookOpen, FileText, LayoutDashboard, LogOut, UserRound, Users } from 'lucide-react'; //icon
 import { useAuth } from '../hooks/useAuth';
 import './Sidebar.css';
 
 /**
  * Purpose: global navigation shell for dashboard, courses, notes, and admin accounts.
- * Contract: route links are hardcoded and should mirror App route map.
  */
 
 const Sidebar = () => {
+    // -------------------------
+    // AUTH AND DISPLAY STATE
+    // -------------------------
     const { user } = useAuth();
     const navigate = useNavigate();
     const isAdmin = user?.userType === 'admin';
     const displayName = user ? `${user.name || ''} ${user.lastName || ''}`.trim() : 'Account';
 
+    // Logs out on the backend, clears cached identity, then returns to login.
     const handleLogout = async () => {
         try {
             await fetch('/api/Auth/logout', {
@@ -30,6 +33,7 @@ const Sidebar = () => {
 
     return (
         <div className="sidebar">
+            {/* Brand block at the top of the sidebar. */}
             <div className="logo">
                 <div className="logo-circle">O</div>
                 <div>
@@ -38,6 +42,7 @@ const Sidebar = () => {
                 </div>
             </div>
 
+            {/* Main navigation links. Admin-only pages are hidden for non-admin users. */}
             <nav className="menu">
                 <NavLink to="/dashboard" className="menu-item">
                     <LayoutDashboard size={18} />
@@ -62,6 +67,7 @@ const Sidebar = () => {
                 )}
             </nav>
 
+            {/* Current account shortcut and logout action at the bottom. */}
             <div className="sidebar-user-actions">
                 <NavLink to="/account" className="menu-item sidebar-account-link">
                     <UserRound size={18} />

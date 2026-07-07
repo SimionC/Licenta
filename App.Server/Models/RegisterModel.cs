@@ -3,8 +3,8 @@ using System.Collections.Generic;
 
 namespace App.Server.Models;
 
-// Purpose: registration payload + reused shape for returning authenticated profile fields.
-// Contract: userTypeId controls student/teacher/admin role behavior.
+// Purpose: used more for auth/session shape
+// 
 
 public partial class RegisterModel
 {

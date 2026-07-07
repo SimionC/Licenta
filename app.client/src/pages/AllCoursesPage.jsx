@@ -4,9 +4,7 @@ import Sidebar from '../components/Sidebar';
 //import CreateCourseForm from '../components/CreateCourseForm'; // Optional: if separated
 
 /**
- * Purpose: Course listing hub with role-specific behavior (student join vs teacher manage).
- * API touched: /api/Course/student, /api/Course/teacher, /api/Course/create, /api/Course/join.
- * State contract: userType selects fetch branch and visible actions.
+ * Purpose: different course actions depending on the user role: students can join courses, while teachers can create and manage their own courses
  */
 
 const AllCoursesPage = ({ userType }) => {
@@ -17,90 +15,7 @@ const AllCoursesPage = ({ userType }) => {
     const [joinCode, setJoinCode] = useState("");
     const [joinedCourse, setJoinedCourse] = useState(null);
     const [registeredCourses, setRegisteredCourses] = useState([]);
-    // const [otherCourses, setOtherCourses] = useState([]);
     const [showJoin, setShowJoin] = useState(false);
-  
-
-
-   //TEST
-    //useEffect(() => {
-    //    if (userType === 'student') {
-    //        const mockCourses = [
-    //            {
-    //                id: 1,
-    //                title: "Finance",
-    //                description: "Understand the core principles of corporate finance.",
-    //                teacherName: "Dr. Sarah Johnson",
-    //            },
-    //            {
-    //                id: 2,
-    //                title: "Microeconomics",
-    //                description: "Analyze individual markets and consumer behavior.",
-    //                teacherName: "Prof. Michael Chen",
-    //            },
-    //            {
-    //                id: 3,
-    //                title: "Databases",
-    //                description: "Learn SQL and relational database design.",
-    //                teacherName: "Ms. Emily Rodriguez",
-    //            },
-    //            {
-    //                id: 4,
-    //                title: "React Fundamentals",
-    //                description: "Build interactive UIs with modern JavaScript.",
-    //                teacherName: "Mr. David Wilson",
-    //            },
-    //            {
-    //                id: 5,
-    //                title: "Finance",
-    //                description: "Understand the core principles of corporate finance.",
-    //                teacherName: "Dr. Sarah Johnson",
-    //            },
-    //            {
-    //                id: 6,
-    //                title: "Microeconomics",
-    //                description: "Analyze individual markets and consumer behavior.",
-    //                teacherName: "Prof. Michael Chen",
-    //            },
-    //            {
-    //                id: 7,
-    //                title: "Databases",
-    //                description: "Learn SQL and relational database design.",
-    //                teacherName: "Ms. Emily Rodriguez",
-    //            },
-    //            {
-    //                id: 8,
-    //                title: "React Fundamentals",
-    //                description: "Build interactive UIs with modern JavaScript.",
-    //                teacherName: "Mr. David Wilson",
-    //            }
-    //        ];
-
-    //        setRegisteredCourses(mockCourses);
-    //    }
-    //}, [userType]);
-
-
-    //useEffect(() => {
-    //    fetch("/api/Course/all")
-    //        .then(res => {
-    //            if (res.ok) return res.json();
-    //            throw new Error("Failed to fetch courses");
-    //        })
-    //        .then(data => setCourses(Array.isArray(data) ? data : []))
-    //        .catch(err => console.error("Failed to fetch courses", err));
-
-    //    if (userType === 'student') {
-    //        fetch("/api/Course/student", { credentials: "include" })
-    //            .then(res => res.json())
-    //            .then(data => {
-    //                setRegisteredCourses(data.registered);
-    //                //setOtherCourses(data.others);
-    //            });
-    //    }
-
-    //}, []);
-
     
    
     useEffect(() => {
@@ -130,7 +45,6 @@ const AllCoursesPage = ({ userType }) => {
         const newCourse = {
             Title: title,
             Description: description
-            //teacherEmail: "teacher@email.com", // replace with logged-in teacher email
         };
 
         const res = await fetch("/api/Course/create", {
@@ -163,15 +77,13 @@ const AllCoursesPage = ({ userType }) => {
             setJoinedCourse(course);
             alert(`Successfully joined: ${course.title}`);
 
-            // ⬇️ FETCH updated course lists
             fetch("/api/Course/student", { credentials: "include" })
                 .then(res => res.json())
                 .then(data => {
                     setRegisteredCourses(data.registered);
-                    //setOtherCourses(data.others);
                 });
 
-            setJoinCode(""); // optional: clear input
+            setJoinCode("");
         } else {
             alert("Invalid code. Please try again.");
         }
@@ -184,7 +96,7 @@ const AllCoursesPage = ({ userType }) => {
                 <div className="dashboard-main">
                     <div className="dashboard-left">
 
-                        {/* 🆕 WRAPPER that centers and limits width */}
+                        {/* WRAPPER that centers and limits width */}
                         <div className="courses-content-wrapper">
 
                             {/* Top title + button */}

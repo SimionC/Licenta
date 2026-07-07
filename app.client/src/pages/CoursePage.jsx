@@ -1,21 +1,7 @@
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'; //route param from the URL
 import { useEffect, useState } from 'react';
 import React from 'react';
-import {
-    ArrowLeft,
-    Code,
-    Download,
-    FileText,
-    Flag,
-    CheckCircle,
-    Lock,
-    Pencil,
-    Plus,
-    Save,
-    Trash2,
-    Unlock,
-    Upload
-} from 'lucide-react';
+import {ArrowLeft,Code,Download,FileText,Flag,CheckCircle,Lock,Pencil,Plus,Save,Trash2,Unlock,Upload} from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import CourseDescriptionBox from '../components/CourseDescriptionBox';
 import ResourceCard from '../components/ResourceCard';
@@ -24,9 +10,11 @@ import './CoursePage.css';
 
 /**
  * Purpose: Single-course view with role-aware course, resource, assignment, submission, and grade management.
- * UI contract: teachers manage; enrolled students consume resources, submit work, and review grades.
+ * Teachers can edit/delete/close the course, upload resources, create assignments, view submissions, and grade students. 
+ * Students can view resources, submit text/file answers, submit note snapshots, and see grades. 
  */
 
+//converts file sizes into readable text like 12KN or 2MB
 const formatBytes = (bytes = 0) => {
     if (!bytes) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB'];
@@ -40,7 +28,7 @@ const formatDate = (value) => {
     return new Date(value).toLocaleDateString();
 };
 
-const toDateInput = (value) => {
+const toDateInput = (value) => { //for HTML data iuput
     if (!value) return '';
     return new Date(value).toISOString().slice(0, 10);
 };
@@ -54,6 +42,7 @@ const isDeadlineReached = (value) => {
     return Date.now() > deadline.getTime();
 };
 
+//to preview submitted note snapshots in a cleaner way
 const cleanInlineMarkdown = (text = '') => text
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .replace(/[*_`~]/g, '')
@@ -108,6 +97,7 @@ const renderSnapshotContent = (content = '', compact = false) => {
     return elements;
 };
 
+//shows a compact preview of a submitted answer or note snapshot
 const SubmissionAnswerPreview = ({ title, content, label = 'Submitted answer', actionLabel = 'Open full answer', onOpen }) => {
     if (!content) return null;
 
@@ -137,7 +127,7 @@ const CoursePage = () => {
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'assignments' ? 'assignments' : 'resources');
     const [courseWorks, setCourseWorks] = useState([]);
     const [resources, setResources] = useState([]);
-    const [availableNotes, setAvailableNotes] = useState([]);
+    const [availableNotes, setAvailableNotes] = useState([]); //notes a student can submit as snapshots
     const [gradesData, setGradesData] = useState(null);
     const [submissionsByAssignment, setSubmissionsByAssignment] = useState({});
     const [savedGradeIds, setSavedGradeIds] = useState({});
@@ -153,6 +143,8 @@ const CoursePage = () => {
     const [selectedFile, setSelectedFile] = useState(null);
     const [message, setMessage] = useState('');
     const [openSnapshot, setOpenSnapshot] = useState(null);
+
+    // ---------------------------------shared general data-----------------------------------------------------
 
     const loadCourseData = async () => {
         setMessage('');
@@ -173,7 +165,7 @@ const CoursePage = () => {
             if (worksRes.ok) setCourseWorks(await worksRes.json());
             if (gradesRes.ok) setGradesData(await gradesRes.json());
 
-            if (!courseData.canManage) {
+            if (!courseData.canManage) { //true = treacher, false = student
                 const notesRes = await fetch('/api/Notes/accessible-notes', { credentials: 'include' });
                 if (notesRes.ok) setAvailableNotes(await notesRes.json());
             }
@@ -194,6 +186,7 @@ const CoursePage = () => {
         }
     }, [searchParams]);
 
+
     const refreshGrades = async () => {
         const res = await fetch(`/api/Course/${courseId}/grades`, { credentials: 'include' });
         if (res.ok) setGradesData(await res.json());
@@ -203,6 +196,8 @@ const CoursePage = () => {
         const res = await fetch(`/api/Course/${courseId}/courseworks`, { credentials: 'include' });
         if (res.ok) setCourseWorks(await res.json());
     };
+
+    // ---------------------------------TEACHER COURSE-----------------------------------------------------
 
     const handleSaveCourse = async (e) => {
         e.preventDefault();
@@ -253,6 +248,8 @@ const CoursePage = () => {
         }
     };
 
+    // ---------------------------------TEACHER RESOURCES-----------------------------------------------------
+
     const handleUploadResource = async (e) => {
         e.preventDefault();
         if (!selectedFile) return;
@@ -294,6 +291,8 @@ const CoursePage = () => {
             setMessage('Failed to remove resource.');
         }
     };
+
+    // ---------------------------------TEACHER ASSIGNMENT-----------------------------------------------------
 
     const handleDeleteAssignment = async () => {
         if (!assignmentToDelete) return;
@@ -342,7 +341,7 @@ const CoursePage = () => {
             : `/api/Course/${courseId}/coursework`;
 
         const res = await fetch(url, {
-            method: isEditingAssignment ? 'PUT' : 'POST',
+            method: isEditingAssignment ? 'PUT' : 'POST', 
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify(payload)
@@ -355,58 +354,6 @@ const CoursePage = () => {
             setEditingAssignment(null);
         } else {
             setMessage('Failed to save assignment.');
-        }
-    };
-
-    const handleSubmitAssignment = async (assignment, e) => {
-        e.preventDefault();
-        const formData = new FormData();
-        formData.append('textAnswer', e.target.textAnswer.value);
-        if (e.target.file.files?.[0]) formData.append('file', e.target.file.files[0]);
-
-        const res = await fetch(`/api/Course/coursework/${assignment.id}/submission`, {
-            method: 'POST',
-            credentials: 'include',
-            body: formData
-        });
-
-        if (res.ok) {
-            const submission = await res.json();
-            setCourseWorks(prev => prev.map(cw =>
-                cw.id === assignment.id ? { ...cw, status: 'completed', submission } : cw
-            ));
-            await refreshGrades();
-            setMessage('Assignment submitted.');
-        } else {
-            setMessage('Could not submit. Check the deadline and your answer.');
-        }
-    };
-
-    const handleSubmitNoteSnapshot = async (assignment, e) => {
-        e.preventDefault();
-        const noteGuid = e.target.noteGuid.value;
-        if (!noteGuid) {
-            setMessage('Choose a note to submit.');
-            return;
-        }
-
-        const res = await fetch(`/api/Course/coursework/${assignment.id}/submit-note`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ noteGuid })
-        });
-
-        if (res.ok) {
-            const submission = await res.json();
-            setCourseWorks(prev => prev.map(cw =>
-                cw.id === assignment.id ? { ...cw, status: 'completed', submission } : cw
-            ));
-            await refreshGrades();
-            e.target.reset();
-            setMessage('Note snapshot submitted.');
-        } else {
-            setMessage('Could not submit the note. Check the deadline and note access.');
         }
     };
 
@@ -484,6 +431,63 @@ const CoursePage = () => {
         }
     };
 
+
+    // ---------------------------------STUDENT ASSIGNMENT-----------------------------------------------------
+
+    const handleSubmitAssignment = async (assignment, e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('textAnswer', e.target.textAnswer.value);
+        if (e.target.file.files?.[0]) formData.append('file', e.target.file.files[0]);
+
+        const res = await fetch(`/api/Course/coursework/${assignment.id}/submission`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (res.ok) {
+            const submission = await res.json();
+            setCourseWorks(prev => prev.map(cw =>
+                cw.id === assignment.id ? { ...cw, status: 'completed', submission } : cw
+            ));
+            await refreshGrades();
+            setMessage('Assignment submitted.');
+        } else {
+            setMessage('Could not submit. Check the deadline and your answer.');
+        }
+    };
+
+    const handleSubmitNoteSnapshot = async (assignment, e) => {
+        e.preventDefault();
+        const noteGuid = e.target.noteGuid.value;
+        if (!noteGuid) {
+            setMessage('Choose a note to submit.');
+            return;
+        }
+
+        const res = await fetch(`/api/Course/coursework/${assignment.id}/submit-note`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ noteGuid })
+        });
+
+        if (res.ok) {
+            const submission = await res.json();
+            setCourseWorks(prev => prev.map(cw =>
+                cw.id === assignment.id ? { ...cw, status: 'completed', submission } : cw
+            ));
+            await refreshGrades();
+            e.target.reset();
+            setMessage('Note snapshot submitted.');
+        } else {
+            setMessage('Could not submit the note. Check the deadline and note access.');
+        }
+    };
+
+    // ---- START RETURN
+
     if (message && !course) {
         return (
             <div className="course-page-container">
@@ -506,6 +510,7 @@ const CoursePage = () => {
         <div className="course-page-container">
             <Sidebar />
             <div className="course-page">
+                {/* Course header: title, teacher name, status, and teacher actions */}
                 <div className="course-header">
                     <div className="course-header-left">
                         <button className="back-btn" onClick={() => navigate(-1)}>
@@ -523,6 +528,7 @@ const CoursePage = () => {
                     </div>
 
                     {canManage && (
+                        /* Teacher-only actions: join code, edit, close/reopen, delete */
                         <div className="course-actions">
                             <div className="course-join-code">
                                 <Code size={16} />
@@ -544,8 +550,10 @@ const CoursePage = () => {
                     )}
                 </div>
 
+                {/* Course message area for success or error feedback */}
                 {message && <div className="course-message">{message}</div>}
 
+                {/* Course edit form shown only when the teacher clicks Edit */}
                 {isEditing ? (
                     <form className="course-edit-box" onSubmit={handleSaveCourse}>
                         <label>
@@ -578,6 +586,7 @@ const CoursePage = () => {
                     <CourseDescriptionBox description={course.description} />
                 )}
 
+                {/* Tab navigation: resources, assignments, grades */}
                 <div className="tabs-actions">
                     <div className="course-tabs">
                         <button
@@ -607,6 +616,7 @@ const CoursePage = () => {
                     )}
                 </div>
 
+                {/* Resources tab: course files and teacher upload area */}
                 {activeTab === 'resources' && (
                     <>
                         {canManage && (
@@ -645,6 +655,7 @@ const CoursePage = () => {
                     </>
                 )}
 
+                {/* Assignments tab: teacher management or student submission panels */}
                 {activeTab === 'assignments' && (
                     <div className="assignment-list">
                         {courseWorks.length === 0 ? (
@@ -698,11 +709,13 @@ const CoursePage = () => {
                     </div>
                 )}
 
+                {/* Grades tab: student grade view or teacher grade overview */}
                 {activeTab === 'grades' && (
                     <GradesPanel gradesData={gradesData} canManage={canManage} />
                 )}
             </div>
 
+            {/* Assignment create/edit modal */}
             {showAssignModal && (
                 <div className="modal-overlay">
                     <div className="modal-content">
@@ -783,6 +796,7 @@ const CoursePage = () => {
                 </div>
             )}
 
+            {/* Assignment delete confirmation modal */}
             {assignmentToDelete && (
                 <div className="modal-overlay">
                     <div className="modal-content confirm-modal">
@@ -820,6 +834,7 @@ const CoursePage = () => {
                 </div>
             )}
 
+            {/* Resource delete confirmation modal */}
             {resourceToDelete && (
                 <div className="modal-overlay">
                     <div className="modal-content confirm-modal">
@@ -844,6 +859,7 @@ const CoursePage = () => {
                 </div>
             )}
 
+            {/* Course delete confirmation modal */}
             {showDeleteCourseModal && (
                 <div className="modal-overlay">
                     <div className="modal-content confirm-modal">
@@ -868,6 +884,7 @@ const CoursePage = () => {
                 </div>
             )}
 
+            {/* Full submitted answer / note snapshot modal */}
             {openSnapshot && (
                 <div className="modal-overlay">
                     <div className="modal-content snapshot-modal">
@@ -890,6 +907,7 @@ const CoursePage = () => {
     );
 };
 
+//student submission UI
 const StudentAssignmentPanel = ({ assignment, onSubmit, onSubmitNote, availableNotes }) => {
     const submission = assignment.submission;
     const locked = isDeadlineReached(assignment.deadline);
@@ -956,7 +974,8 @@ const StudentAssignmentPanel = ({ assignment, onSubmit, onSubmitNote, availableN
     );
 };
 
-const TeacherAssignmentPanel = ({ assignment, submissions, onEdit, onUpload, onGrade, savedGradeIds, onOpenSnapshot }) => {
+// teacher tools for each assgnment - edit, upload file, view stud subm, download subm files, save grade&comments
+const TeacherAssignmentPanel = ({ submissions, onEdit, onUpload, onGrade, savedGradeIds, onOpenSnapshot }) => {
     return (
         <div className="assignment-panel">
             <div className="assignment-toolbar">
@@ -1056,6 +1075,9 @@ const TeacherAssignmentPanel = ({ assignment, submissions, onEdit, onUpload, onG
     );
 };
 
+//shows gerades by role
+//students - their final grade and assignment rows
+//teacher  - each student with final grade and assignment rows
 const GradesPanel = ({ gradesData, canManage }) => {
     if (!gradesData) return <div className="course-empty-state">Loading grades...</div>;
 
@@ -1093,6 +1115,7 @@ const GradesPanel = ({ gradesData, canManage }) => {
     );
 };
 
+//one assignment grade row 
 const GradeRow = ({ row }) => (
     <div className="grade-row">
         <div>

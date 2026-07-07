@@ -2,26 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import NotesNoteCard from '../components/NotesNoteCard';
-import {
-    Clock,
-    Folder,
-    FolderPlus,
-    Inbox,
-    Pencil,
-    Plus,
-    Search,
-    Trash2,
-    UserPlus,
-    UserRoundCheck,
-    Users,
-    X
-} from 'lucide-react';
+import {Clock, Folder,FolderPlus,Inbox,Pencil,Plus,Search,Trash2,UserPlus,UserRoundCheck,Users,X} from 'lucide-react';
 import '../components/NotesNoteCard.css';
 
 /**
  * Purpose: Personal notes workspace with folders, filtering, and search.
- * API touched: GET /api/Notes/my-notes, GET /api/Notes/accessible-notes, CRUD /api/NoteFolders.
- * Route contract: collaboration notes still route to /collaborations/{id}/notes/{guid}.
  */
 
 const VIEW_RECENT = 'recent';
@@ -55,6 +40,8 @@ const NotesPage = () => {
     const [isCreatingCollaboration, setIsCreatingCollaboration] = useState(false);
     const [message, setMessage] = useState('');
     const [recentMessage, setRecentMessage] = useState('');
+
+    // ---------------------------------WORKSPACE DATA LOADING-----------------------------------------------
 
     const loadWorkspace = async () => {
         setLoading(true);
@@ -128,6 +115,8 @@ const NotesPage = () => {
         loadWorkspace();
     }, [removedCollaborationId, workspaceAction]);
 
+    // ---------------------------------DERIVED NOTE DATA / FILTERING-----------------------------------------
+
     const folderNameById = useMemo(() => {
         return folders.reduce((acc, folder) => {
             acc[folder.id] = folder.name;
@@ -166,6 +155,8 @@ const NotesPage = () => {
         return nextNotes;
     }, [notes, recentNotes, sharedNotes, searchTerm, selectedFolderId, selectedView]);
 
+    // ---------------------------------VIEW / NOTE NAVIGATION------------------------------------------------
+
     const selectView = (view) => {
         setSelectedView(view);
         setSelectedFolderId(null);
@@ -180,6 +171,8 @@ const NotesPage = () => {
         const query = selectedFolderId ? `?folderId=${selectedFolderId}` : '';
         navigate(`/notes/new${query}`);
     };
+
+    // ---------------------------------COLLABORATION CREATION------------------------------------------------
 
     const resetCollaborationModal = () => {
         setCollaborationName('');
@@ -255,6 +248,8 @@ const NotesPage = () => {
         }
     };
 
+    // ---------------------------------FOLDER MANAGEMENT-----------------------------------------------------
+
     const handleCreateFolder = async (e) => {
         e.preventDefault();
         const name = newFolderName.trim();
@@ -320,6 +315,8 @@ const NotesPage = () => {
         }
     };
 
+    // ---------------------------------NOTE OPENING / EMPTY STATE TEXT---------------------------------------
+
     const openNote = (note) => {
         const isCollab = Boolean(note.collaborationId);
         const url = isCollab
@@ -344,7 +341,9 @@ const NotesPage = () => {
         <div className="notes-page">
             <Sidebar />
             <div className="notes-main notes-workspace">
+                {/* Workspace sidebar: view filters, folders, and collaboration links */}
                 <aside className="notes-workspace-sidebar">
+                    {/* Notes view filters: recent, no-folder, shared */}
                     <div className="notes-sidebar-title">Notes</div>
                     <button
                         className={`notes-view-btn ${selectedView === VIEW_RECENT ? 'active' : ''}`}
@@ -368,6 +367,7 @@ const NotesPage = () => {
                         Shared with me
                     </button>
 
+                    {/* Folder management: create, select, rename, delete */}
                     <div className="notes-folder-heading">Folders</div>
                     <form className="notes-folder-create" onSubmit={handleCreateFolder}>
                         <input
@@ -429,6 +429,7 @@ const NotesPage = () => {
                         ))}
                     </div>
 
+                    {/* Collaboration workspaces: create a workspace or open an existing one */}
                     <div className="notes-folder-heading notes-heading-row">
                         <span>Collaborations</span>
                         <button
@@ -459,6 +460,7 @@ const NotesPage = () => {
                     </div>
                 </aside>
 
+                {/* Main notes area: title, search, status messages, and note cards */}
                 <main className="notes-workspace-main">
                     <div className="notes-workspace-header">
                         <div>
@@ -492,6 +494,7 @@ const NotesPage = () => {
                         />
                     </div>
 
+                    {/* Workspace messages and recent-notes loading feedback */}
                     {message && <div className="notes-message">{message}</div>}
                     {selectedView === VIEW_RECENT && recentMessage && (
                         <div className="notes-message">{recentMessage}</div>
@@ -510,6 +513,7 @@ const NotesPage = () => {
                             )}
                         </div>
                     ) : (
+                        /* Note grid: opens either personal notes or collaboration notes */
                         <div className="notes-grid">
                             {filteredNotes.map(note => (
                                 <div key={note.id} onClick={() => openNote(note)}>
@@ -534,6 +538,7 @@ const NotesPage = () => {
                 </main>
             </div>
 
+            {/* Folder delete confirmation modal */}
             {folderToDelete && (
                 <div className="modal-overlay">
                     <div className="modal-content notes-confirm-modal">
@@ -554,6 +559,7 @@ const NotesPage = () => {
                 </div>
             )}
 
+            {/* Collaboration creation modal */}
             {collaborationModalOpen && (
                 <div className="modal-overlay">
                     <div className="modal-content notes-confirm-modal notes-collaboration-modal">
@@ -595,6 +601,7 @@ const NotesPage = () => {
                                 </button>
                             </div>
 
+                            {/* Pending collaborator list before workspace creation */}
                             <div className="notes-collab-member-list">
                                 {collaborationMembers.length === 0 ? (
                                     <p>No collaborators yet. You can add members later.</p>

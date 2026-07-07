@@ -7,6 +7,7 @@ namespace App.Server.ORM;
 
 /// Purpose: primary user entity used by auth, courses, notes, collaborations.
 /// Key relations: foreign key to UserType via UserTypeId.
+/// partial = the class could be split across multiple files if needed - this file contains the important properties.
 public partial class User
 {
     [Key]

@@ -5,19 +5,26 @@ import Sidebar from '../components/Sidebar';
 import PasswordChangeForm from '../components/PasswordChangeForm';
 import '../App.css';
 
+// Maps backend role names into readable labels for the profile form.
 const roleLabels = {
     student: 'Student',
     teacher: 'Teacher',
     admin: 'Admin'
 };
 
+// Applies the selected theme globally and remembers it in the browser.
 const applyTheme = (theme) => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('theme', theme);
 };
 
 const AccountPage = () => {
+    // -------------------------
+    // ROUTE AND PAGE STATE
+    // -------------------------
     const navigate = useNavigate();
+
+    // Profile data, editable fields, theme preference, and loading/action flags.
     const [profile, setProfile] = useState(null);
     const [formData, setFormData] = useState({ nume: '', prenume: '' });
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
@@ -26,10 +33,16 @@ const AccountPage = () => {
     const [loading, setLoading] = useState(true);
     const [showPasswordForm, setShowPasswordForm] = useState(false);
 
+    // -------------------------
+    // THEME HANDLING
+    // -------------------------
     useEffect(() => {
         applyTheme(theme);
     }, [theme]);
 
+    // -------------------------
+    // PROFILE LOADING
+    // -------------------------
     useEffect(() => {
         const fetchProfile = async () => {
             setLoading(true);
@@ -70,6 +83,9 @@ const AccountPage = () => {
         fetchProfile();
     }, []);
 
+    // -------------------------
+    // PROFILE AND SECURITY ACTIONS
+    // -------------------------
     const handleChange = (event) => {
         const { name, value } = event.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
@@ -111,8 +127,10 @@ const AccountPage = () => {
 
     return (
         <div className="account-page">
+            {/* Page shell: sidebar plus the account settings workspace. */}
             <Sidebar />
             <main className="account-main">
+                {/* Page heading. */}
                 <header className="account-header">
                     <div>
                         <h1>Account</h1>
@@ -122,10 +140,12 @@ const AccountPage = () => {
 
                 {message && <div className="dashboard-data-message">{message}</div>}
 
+                {/* Loading state while profile data is fetched. */}
                 {loading ? (
                     <div className="account-card">Loading account...</div>
                 ) : (
                     <div className="account-layout">
+                        {/* Profile card: editable name fields plus read-only identity fields. */}
                         <section className="account-card">
                             <div className="account-card-title">
                                 <UserRound size={20} />
@@ -179,6 +199,7 @@ const AccountPage = () => {
                             </form>
                         </section>
 
+                        {/* Preferences card: device-local theme toggle. */}
                         <section className="account-card">
                             <div className="account-card-title">
                                 {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
@@ -201,6 +222,7 @@ const AccountPage = () => {
                             </div>
                         </section>
 
+                        {/* Security card: opens the password-change form. */}
                         <section className="account-card">
                             <div className="account-card-title">
                                 <Shield size={20} />

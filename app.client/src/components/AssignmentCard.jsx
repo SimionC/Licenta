@@ -1,6 +1,7 @@
 ﻿// components/AssignmentCard.jsx
 import { AlertCircle, Circle } from "react-feather";
 
+// Maps assignment urgency/status to border and icon colors.
 const statusColor = {
     urgent: "#E74C3C",
     warning: "#F1C40F",
@@ -8,6 +9,7 @@ const statusColor = {
     closed: "#94A3B8"
 };
 
+// Maps assignment urgency/status to the due-date badge background.
 const statusBackground = {
     urgent: "#FDEDEC",
     warning: "#FCF3CF",
@@ -15,6 +17,9 @@ const statusBackground = {
     closed: "#F1F5F9"
 };
 
+/**
+ * Purpose: compact dashboard assignment card.
+ */
 const AssignmentCard = ({ assignment, onClick }) => {
     return (
         <div onClick={onClick} style={{
@@ -43,9 +48,11 @@ const AssignmentCard = ({ assignment, onClick }) => {
             }}>
                 {assignment.due}
             </div>
+            {/* Urgent assignments get an extra warning icon. */}
             {assignment.status === 'urgent' && (
                 <AlertCircle size={16} color={statusColor.urgent} style={{ position: "absolute", top: "1rem", right: "1rem" }} />
             )}
+            {/* Small status dot in the corner. */}
             <Circle
                 size={8}
                 fill={statusColor[assignment.status]}

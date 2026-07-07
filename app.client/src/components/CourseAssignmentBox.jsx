@@ -20,11 +20,13 @@ const CourseAssignmentBox = ({
 }) => {
     return (
         <div className="course-assignment-box">
+            {/* Assignment title and current status badge. */}
             <div className="cab-header">
                 <h3 className="cab-title">{title}</h3>
                 <span className={`cab-status cab-status--${status}`}>{status}</span>
             </div>
             <p className="cab-desc">{description}</p>
+            {/* Deadline, grade weight, and optional action button. */}
             <div className="cab-meta">
                 <div className="cab-meta-item">
                     <Calendar size={16} className="cab-meta-icon" />
@@ -39,6 +41,7 @@ const CourseAssignmentBox = ({
                     </button>
                 )}
             </div>
+            {/* Extra nested content, such as submissions or grading UI. */}
             {children && <div className="cab-extra">{children}</div>}
         </div>
     );

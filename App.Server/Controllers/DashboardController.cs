@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
-//Purpose: Role-aware dashboard summary for existing dashboard cards.
-//Inputs/Outputs: Uses current authenticated user; returns recent courses, recent notes, and urgent assignments.
+//Purpose: the backend endpoint that gives data to DashboardPage.jsx
+//Info: Uses current authenticated user; returns recent courses, recent notes, and assignments
 
 [ApiController]
 [Route("api/[controller]")]
@@ -223,7 +223,7 @@ public class DashboardController : ControllerBase
         if (due <= now.AddDays(10)) return ("warning", "Due soon", 1);
         return ("ok", "Upcoming", 3);
     }
-
+    // I wanted to make them different, but gave up, it could be an improvement later
     private static (string Status, string Label, int SortOrder) GetTeacherUrgency(DateTime? deadline, int ungradedCount)
     {
         if (deadline == null) return ("ok", "Upcoming", 3);
@@ -235,7 +235,7 @@ public class DashboardController : ControllerBase
         return ("ok", "Upcoming", 3);
     }
 
-    private static DateTime EndOfDayIfDateOnly(DateTime value)
+    private static DateTime EndOfDayIfDateOnly(DateTime value) //until 07.10.2026 23:59:59 
     {
         var localValue = value.Kind == DateTimeKind.Utc
             ? value.ToLocalTime()
@@ -263,6 +263,7 @@ public class DashboardController : ControllerBase
         return int.TryParse(claim, out var roleId) ? roleId : null;
     }
 
+    // Small response models - shape the data returned to the frontend -  not database tables
     public class DashboardCourseItem
     {
         public int Id { get; set; }

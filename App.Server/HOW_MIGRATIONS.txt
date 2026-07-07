@@ -1,0 +1,9 @@
+1. Change the model/ORM
+IN TERMINAL
+2. Create the migration 
+	dotnet ef migrations add MigrationName --project App.Server
+3. Apply the migration to the database
+	dotnet ef database update --project App.Server
+4. CHECK 
+	dotnet build App.sln
+	or direct in the database
